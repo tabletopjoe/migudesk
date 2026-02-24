@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gWrassler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="logo-area">
+        <h1 class="logo">gWrassler</h1>
+        <a href="https://mail.google.com/mail/#inbox" target="_blank" rel="noopener noreferrer" class="logo-gmail-link" title="Open Gmail">↗</a>
+      </div>
+      <div id="auth-area"></div>
+    </header>
+
+    <main id="main" class="main hidden">
+      <div class="tabs-bar">
+        <button type="button" class="tab active" data-tab="2">Search</button>
+        <button type="button" class="tab" data-tab="1">Account</button>
+        <button type="button" class="tab" data-tab="3">Tab 3</button>
+      </div>
+      <div class="tab-panel hidden" id="tab-panel-1">
+        <div class="account-data">
+          <h3 class="account-data-title">Account</h3>
+          <div id="account-data-content" class="account-data-content">
+            <p class="tab-placeholder">Loading…</p>
+          </div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-panel-2">
+      <section class="query-section">
+        <div class="query-preview" id="query-preview">
+          <div class="query-preview-content">
+            <span class="query-preview-label">Query preview:</span>
+            <span class="query-preview-text" id="query-preview-text">— Add clauses below —</span>
+          </div>
+          <button type="button" class="btn btn-primary btn-execute" id="execute-btn">Execute</button>
+          <button type="button" id="copy-query-btn" class="query-copy-link hidden" title="Copy query to clipboard">⎘</button>
+          <a href="#" id="gmail-search-link" class="query-gmail-link hidden" title="Open this search in Gmail">↗</a>
+        </div>
+        <div class="query-builder-wrapper">
+          <div class="query-builder-left">
+            <div class="query-clauses" id="query-clauses"></div>
+            <div class="query-add-row">
+              <span class="query-add-label">Add clause:</span>
+              <div class="query-add-buttons" id="query-add-buttons"></div>
+            </div>
+            <div class="query-batch-row">
+              <label for="batch-size" class="query-batch-label">Results per page:</label>
+              <input type="number" id="batch-size" class="query-batch-input" min="5" max="500" value="50" />
+            </div>
+          </div>
+          <div class="query-builder-right">
+            <button type="button" id="save-query-btn" class="btn btn-secondary hidden">Save Query</button>
+            <select id="saved-queries-dropdown" class="saved-queries-dropdown hidden" title="Load saved query">
+              <option value="">Load saved query…</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="results-section" id="results-section">
+        <div class="results-header">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="select-all" class="checkbox" />
+            <span class="checkbox-label">Select all on page</span>
+          </label>
+          <div class="results-header-right">
+            <span id="results-count" class="results-count-info"></span>
+            <button id="delete-btn" class="btn btn-danger" disabled>Move to Trash (<span id="selected-count">0</span>)</button>
+          </div>
+        </div>
+        <div class="results-table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th class="col-check"></th>
+                <th class="col-from sortable" data-sort="from">From <span class="sort-icon"></span></th>
+                <th class="col-subject">Subject</th>
+                <th class="col-date sortable" data-sort="date">Date Received <span class="sort-icon"></span></th>
+                <th class="col-size sortable" data-sort="size">Size <span class="sort-icon"></span></th>
+                <th class="col-preview">Body Preview</th>
+                <th class="col-open" title="Open in Gmail"></th>
+              </tr>
+            </thead>
+            <tbody id="results-list"></tbody>
+          </table>
+        </div>
+        <div id="results-footer" class="results-footer"></div>
+      </section>
+
+      <section class="action-log-section">
+        <div class="action-log-label">Action log</div>
+        <div id="action-log" class="action-log"></div>
+      </section>
+      </div>
+
+      <div class="tab-panel hidden" id="tab-panel-3">
+        <p class="tab-placeholder">Coming soon</p>
+      </div>
+    </main>
+
+    <div id="login-screen" class="login-screen">
+      <div class="login-card">
+        <h2>Sign in with Google</h2>
+        <p>Connect your Gmail to search and manage your inbox.</p>
+        <button id="login-btn" class="btn btn-primary btn-lg">Continue with Google</button>
+        <p id="login-error" class="login-error hidden"></p>
+      </div>
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Loading…</p>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
