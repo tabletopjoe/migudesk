@@ -85,6 +85,130 @@ function hide(el) {
   el?.classList?.add('hidden');
 }
 
+/* Modal dialogs - replace alert/prompt/confirm */
+function showModal(el) {
+  el.classList.remove('hidden');
+  el.setAttribute('aria-hidden', 'false');
+}
+
+function hideModal(el) {
+  el.classList.add('hidden');
+  el.setAttribute('aria-hidden', 'true');
+}
+
+function modalAlert(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const content = document.getElementById('modal-content');
+    content.innerHTML = `
+      <h3 class="modal-title" id="modal-title">${escapeHtml(message)}</h3>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary modal-ok">OK</button>
+      </div>
+    `;
+    const ok = content.querySelector('.modal-ok');
+    const handler = () => {
+      ok.removeEventListener('click', handler);
+      overlay.removeEventListener('click', overlayHandler);
+      document.removeEventListener('keydown', keyHandler);
+      hideModal(overlay);
+      resolve();
+    };
+    const overlayHandler = (e) => {
+      if (e.target === overlay) handler();
+    };
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') handler();
+    };
+    ok.addEventListener('click', handler);
+    overlay.addEventListener('click', overlayHandler);
+    document.addEventListener('keydown', keyHandler);
+    showModal(overlay);
+    ok.focus();
+  });
+}
+
+function modalPrompt(message, defaultValue = '') {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const content = document.getElementById('modal-content');
+    content.innerHTML = `
+      <h3 class="modal-title" id="modal-title">${escapeHtml(message)}</h3>
+      <input type="text" class="modal-input" id="modal-input" value="${escapeHtml(defaultValue)}" />
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary modal-ok">OK</button>
+      </div>
+    `;
+    const input = content.querySelector('#modal-input');
+    const ok = content.querySelector('.modal-ok');
+    const cancel = content.querySelector('.modal-cancel');
+    const close = (value) => {
+      ok.removeEventListener('click', okHandler);
+      cancel.removeEventListener('click', cancelHandler);
+      overlay.removeEventListener('click', overlayHandler);
+      document.removeEventListener('keydown', keyHandler);
+      hideModal(overlay);
+      resolve(value);
+    };
+    const okHandler = () => close(input.value);
+    const cancelHandler = () => close(null);
+    const overlayHandler = (e) => {
+      if (e.target === overlay) cancelHandler();
+    };
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') cancelHandler();
+      if (e.key === 'Enter') okHandler();
+    };
+    ok.addEventListener('click', okHandler);
+    cancel.addEventListener('click', cancelHandler);
+    overlay.addEventListener('click', overlayHandler);
+    document.addEventListener('keydown', keyHandler);
+    showModal(overlay);
+    input.focus();
+    input.select();
+  });
+}
+
+function modalConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const content = document.getElementById('modal-content');
+    content.innerHTML = `
+      <h3 class="modal-title" id="modal-title">${escapeHtml(message)}</h3>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary modal-ok">OK</button>
+      </div>
+    `;
+    const ok = content.querySelector('.modal-ok');
+    const cancel = content.querySelector('.modal-cancel');
+    const close = (value) => {
+      ok.removeEventListener('click', okHandler);
+      cancel.removeEventListener('click', cancelHandler);
+      overlay.removeEventListener('click', overlayHandler);
+      document.removeEventListener('keydown', keyHandler);
+      hideModal(overlay);
+      resolve(value);
+    };
+    const okHandler = () => close(true);
+    const cancelHandler = () => close(false);
+    const overlayHandler = (e) => {
+      if (e.target === overlay) cancelHandler();
+    };
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') cancelHandler();
+      if (e.key === 'Enter') okHandler();
+    };
+    ok.addEventListener('click', okHandler);
+    cancel.addEventListener('click', cancelHandler);
+    overlay.addEventListener('click', overlayHandler);
+    document.addEventListener('keydown', keyHandler);
+    showModal(overlay);
+    ok.focus();
+  });
+}
+
 async function checkAuth() {
   const { authenticated } = await API.get('/auth/status');
   return authenticated;
@@ -247,7 +371,7 @@ async function saveSavedLinks() {
   try {
     linksData = await API.put('/api/links', { categories: linksData.categories });
   } catch (e) {
-    alert(e?.message || 'Failed to save links');
+    await modalAlert(e?.message || 'Failed to save links');
   }
 }
 
@@ -272,7 +396,10 @@ function renderSavedLinks() {
     `;
     header.addEventListener('click', (e) => {
       if (!e.target.closest('.saved-links-action-btn')) {
-        catEl.classList.toggle('expanded');
+        e.stopPropagation();
+        const wasExpanded = catEl.classList.contains('expanded');
+        document.querySelectorAll('#saved-links-categories .saved-links-category').forEach((c) => c.classList.remove('expanded'));
+        if (!wasExpanded) catEl.classList.add('expanded');
       } else {
         const btn = e.target.closest('.saved-links-action-btn');
         if (btn.dataset.action === 'edit-category') handleEditCategory(cat.id);
@@ -346,7 +473,7 @@ async function submitAddLink() {
   const url = urlInput?.value?.trim();
   const name = nameInput?.value?.trim();
   if (!url) {
-    alert('URL is required');
+    await modalAlert('URL is required');
     return;
   }
   const cat = linksData.categories.find((c) => c.id === addLinkCategoryId);
@@ -366,13 +493,13 @@ async function handleEditCategory(categoryId) {
   editingCategoryId = categoryId;
   const cat = linksData.categories.find((c) => c.id === categoryId);
   if (!cat) return;
-  const name = window.prompt('Category name:', cat.name);
+  const name = await modalPrompt('Category name:', cat.name);
   if (name === null) return;
   const trimmed = name.trim();
   if (!trimmed) return;
   const exists = linksData.categories.some((c) => c.id !== categoryId && c.name.toLowerCase() === trimmed.toLowerCase());
   if (exists) {
-    alert('Category name already exists');
+    await modalAlert('Category name already exists');
     return;
   }
   cat.name = trimmed;
@@ -383,7 +510,9 @@ async function handleEditCategory(categoryId) {
 
 async function handleDeleteCategory(categoryId) {
   const cat = linksData.categories.find((c) => c.id === categoryId);
-  if (!cat || !confirm(`Delete category "${cat.name}" and all its links?`)) return;
+  if (!cat) return;
+  const ok = await modalConfirm(`Delete category "${cat.name}" and all its links?`);
+  if (!ok) return;
   linksData.categories = linksData.categories.filter((c) => c.id !== categoryId);
   await saveSavedLinks();
   renderSavedLinks();
@@ -394,9 +523,9 @@ async function handleEditLink(categoryId, linkId) {
   const cat = linksData.categories.find((c) => c.id === categoryId);
   const link = cat?.links?.find((l) => l.id === linkId);
   if (!link) return;
-  const url = window.prompt('URL:', link.url);
+  const url = await modalPrompt('URL:', link.url);
   if (url === null) return;
-  const displayName = window.prompt('Display name:', link.displayName || link.url);
+  const displayName = await modalPrompt('Display name:', link.displayName || link.url);
   if (displayName === null) return;
   link.url = url.trim() || link.url;
   link.displayName = (displayName || link.url).trim();
@@ -408,7 +537,9 @@ async function handleEditLink(categoryId, linkId) {
 async function handleDeleteLink(categoryId, linkId) {
   const cat = linksData.categories.find((c) => c.id === categoryId);
   const link = cat?.links?.find((l) => l.id === linkId);
-  if (!link || !confirm(`Delete "${link.displayName || link.url}"?`)) return;
+  if (!link) return;
+  const ok = await modalConfirm(`Delete "${link.displayName || link.url}"?`);
+  if (!ok) return;
   cat.links = cat.links.filter((l) => l.id !== linkId);
   await saveSavedLinks();
   renderSavedLinks();
@@ -416,12 +547,12 @@ async function handleDeleteLink(categoryId, linkId) {
 
 function initSavedLinks() {
   document.getElementById('add-category-btn')?.addEventListener('click', async () => {
-    const name = window.prompt('Category name:');
+    const name = await modalPrompt('Category name:');
     if (!name?.trim()) return;
     const trimmed = name.trim();
     const exists = linksData.categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase());
     if (exists) {
-      alert('Category name already exists');
+      await modalAlert('Category name already exists');
       return;
     }
     linksData.categories.push({

@@ -1,7 +1,7 @@
 {
-  "name": "gwrassler",
+  "name": "megadesk",
   "version": "1.0.0",
-  "description": "Gmail inbox management - targeted search, mass delete, and account metadata",
+  "description": "MMS Home Page",
   "main": "server.js",
   "type": "module",
   "scripts": {

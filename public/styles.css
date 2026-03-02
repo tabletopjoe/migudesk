@@ -239,6 +239,7 @@ body {
   align-items: flex-start;
   gap: 0.5rem;
   margin-top: -0.5rem;
+  margin-left: -1.5rem;
 }
 
 .saved-links-add-category {
@@ -266,6 +267,7 @@ body {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 
@@ -302,7 +304,7 @@ body {
 .saved-links-category-links {
   display: none;
   padding: 0.25rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(236, 245, 238, 0.85);
   backdrop-filter: blur(12px);
 }
 
@@ -1276,6 +1278,72 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Modal dialogs */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 36, 32, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(26, 36, 32, 0.2);
+  min-width: 280px;
+  max-width: 95vw;
+}
+
+.modal-content {
+  padding: 1.25rem;
+}
+
+.modal-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.modal-message {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  min-width: 4rem;
 }
 
 .hidden {
