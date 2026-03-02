@@ -16,6 +16,18 @@ const API = {
     }
     return r.json();
   },
+  async put(path, body) {
+    const r = await fetch(path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      throw new Error(data.error || r.statusText);
+    }
+    return r.json();
+  },
 };
 
 let currentQuery = '';
@@ -106,6 +118,319 @@ function renderAuthArea() {
     area.innerHTML = '';
     renderLogin();
     document.getElementById('login-btn').onclick = initLogin;
+  });
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function getRouteFromHash() {
+  const hash = (window.location.hash || '#home').slice(1);
+  return hash === 'gmail' ? 'gmail' : 'home';
+}
+
+let homeDatetimeInterval = null;
+
+function renderRoute(route) {
+  const r = route === 'gmail' ? 'gmail' : 'home';
+  const app = document.getElementById('app');
+  app.dataset.route = r;
+  document.querySelectorAll('.nav-tab').forEach((a) => {
+    a.classList.toggle('active', a.dataset.route === r);
+  });
+  document.querySelectorAll('.module-view').forEach((v) => {
+    v.classList.toggle('hidden', v.dataset.route !== r);
+  });
+  document.querySelectorAll('.logo').forEach((el) => {
+    if (el.dataset.route) el.style.display = el.dataset.route === r ? '' : 'none';
+  });
+  if (homeDatetimeInterval) {
+    clearInterval(homeDatetimeInterval);
+    homeDatetimeInterval = null;
+  }
+  if (r === 'home') {
+    updateHomeContent();
+    homeDatetimeInterval = setInterval(updateHomeDatetime, 1000);
+  }
+}
+
+function initRoute() {
+  const handleRoute = () => {
+    const route = getRouteFromHash();
+    renderRoute(route);
+  };
+  window.addEventListener('hashchange', handleRoute);
+  handleRoute();
+}
+
+function formatDateTimeEST() {
+  return new Date().toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'full',
+    timeStyle: 'long',
+  });
+}
+
+function updateHomeDatetime() {
+  const el = document.getElementById('home-datetime');
+  if (el) el.textContent = formatDateTimeEST();
+}
+
+function getClientSessionInfo() {
+  const conn = navigator.connection || {};
+  return {
+    'IP address': '—',
+    'User agent': navigator.userAgent || '—',
+    'Platform': navigator.platform || '—',
+    'Language': navigator.language || '—',
+    'Languages': navigator.languages?.join(', ') || '—',
+    'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || '—',
+    'Online': navigator.onLine ? 'Yes' : 'No',
+    'Cookies enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+    'Do not track': navigator.doNotTrack || '—',
+    'Connection type': conn.effectiveType || '—',
+    'Color depth': screen.colorDepth ? `${screen.colorDepth}-bit` : '—',
+    'Pixel ratio': String(window.devicePixelRatio || 1),
+    'Secure context': window.isSecureContext ? 'Yes' : 'No',
+    'Referrer': document.referrer || '(none)',
+  };
+}
+
+async function fetchAndMergeSessionInfo() {
+  const client = getClientSessionInfo();
+  try {
+    const server = await API.get('/api/session-info');
+    client['IP address'] = server.ip || '—';
+  } catch {}
+  return client;
+}
+
+function renderHomeSession(data) {
+  const el = document.getElementById('home-session-list');
+  if (!el) return;
+  el.innerHTML = Object.entries(data)
+    .map(([k, v]) => `<div class="home-session-entry"><span class="home-session-key">${escapeHtml(k)}:</span> ${escapeHtml(String(v))}</div>`)
+    .join('');
+}
+
+async function loadHomeSession() {
+  const data = await fetchAndMergeSessionInfo();
+  renderHomeSession(data);
+}
+
+function updateHomeContent() {
+  loadSavedLinks();
+  loadHomeSession();
+  updateHomeDatetime();
+}
+
+// --- Saved Links ---
+let linksData = { categories: [] };
+let addLinkCategoryId = null;
+let editingLinkId = null;
+let editingCategoryId = null;
+
+async function loadSavedLinks() {
+  try {
+    linksData = await API.get('/api/links');
+    if (!linksData.categories) linksData.categories = [];
+  } catch {
+    linksData = { categories: [] };
+  }
+  renderSavedLinks();
+}
+
+async function saveSavedLinks() {
+  try {
+    linksData = await API.put('/api/links', { categories: linksData.categories });
+  } catch (e) {
+    alert(e?.message || 'Failed to save links');
+  }
+}
+
+function renderSavedLinks() {
+  const container = document.getElementById('saved-links-categories');
+  const formContainer = document.getElementById('add-link-form-container');
+  if (!container) return;
+  container.innerHTML = '';
+  formContainer.innerHTML = '';
+  linksData.categories.forEach((cat) => {
+    const catEl = document.createElement('div');
+    catEl.className = 'saved-links-category';
+    catEl.dataset.categoryId = cat.id;
+    const header = document.createElement('div');
+    header.className = 'saved-links-category-header';
+    header.innerHTML = `
+      <span class="saved-links-category-name">${escapeHtml(cat.name)}</span>
+      <span class="saved-links-category-actions">
+        <button type="button" class="saved-links-action-btn edit" data-action="edit-category" title="Edit">✎</button>
+        <button type="button" class="saved-links-action-btn delete" data-action="delete-category" title="Delete">×</button>
+      </span>
+    `;
+    header.addEventListener('click', (e) => {
+      if (!e.target.closest('.saved-links-action-btn')) {
+        catEl.classList.toggle('expanded');
+      } else {
+        const btn = e.target.closest('.saved-links-action-btn');
+        if (btn.dataset.action === 'edit-category') handleEditCategory(cat.id);
+        else if (btn.dataset.action === 'delete-category') handleDeleteCategory(cat.id);
+      }
+    });
+    const linksDiv = document.createElement('div');
+    linksDiv.className = 'saved-links-category-links';
+    (cat.links || []).forEach((link) => {
+      const linkEl = document.createElement('div');
+      linkEl.className = 'saved-links-link';
+      linkEl.innerHTML = `
+        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.displayName || link.url)}</a>
+        <span class="saved-links-link-actions">
+          <button type="button" class="saved-links-action-btn edit" data-link-id="${escapeHtml(link.id)}" title="Edit">✎</button>
+          <button type="button" class="saved-links-action-btn delete" data-link-id="${escapeHtml(link.id)}" title="Delete">×</button>
+        </span>
+      `;
+      linkEl.querySelector('.saved-links-link-actions').addEventListener('click', (e) => {
+        const btn = e.target.closest('.saved-links-action-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const id = btn.dataset.linkId;
+        if (btn.classList.contains('edit')) handleEditLink(cat.id, id);
+        else if (btn.classList.contains('delete')) handleDeleteLink(cat.id, id);
+      });
+      linksDiv.appendChild(linkEl);
+    });
+    const addLinkRow = document.createElement('div');
+    addLinkRow.className = 'saved-links-add-link-row';
+    const addLinkBtn = document.createElement('button');
+    addLinkBtn.type = 'button';
+    addLinkBtn.className = 'saved-links-add-link';
+    addLinkBtn.textContent = '+ add link';
+    addLinkBtn.addEventListener('click', () => showAddLinkForm(cat.id));
+    addLinkRow.appendChild(addLinkBtn);
+    linksDiv.appendChild(addLinkRow);
+    catEl.appendChild(header);
+    catEl.appendChild(linksDiv);
+    container.appendChild(catEl);
+  });
+}
+
+function showAddLinkForm(categoryId) {
+  addLinkCategoryId = categoryId;
+  const formContainer = document.getElementById('add-link-form-container');
+  const form = document.createElement('div');
+  form.className = 'add-link-form';
+  form.innerHTML = `
+    <input type="url" id="add-link-url" class="add-link-input" placeholder="URL" />
+    <input type="text" id="add-link-name" class="add-link-input" placeholder="Display name" />
+    <div class="add-link-actions">
+      <button type="button" id="add-link-submit" class="btn btn-primary btn-sm">Add</button>
+      <button type="button" id="add-link-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+    </div>
+  `;
+  formContainer.innerHTML = '';
+  formContainer.appendChild(form);
+  form.querySelector('#add-link-submit').addEventListener('click', () => submitAddLink());
+  form.querySelector('#add-link-cancel').addEventListener('click', () => cancelAddLink());
+}
+
+function cancelAddLink() {
+  addLinkCategoryId = null;
+  document.getElementById('add-link-form-container').innerHTML = '';
+}
+
+async function submitAddLink() {
+  const urlInput = document.getElementById('add-link-url');
+  const nameInput = document.getElementById('add-link-name');
+  const url = urlInput?.value?.trim();
+  const name = nameInput?.value?.trim();
+  if (!url) {
+    alert('URL is required');
+    return;
+  }
+  const cat = linksData.categories.find((c) => c.id === addLinkCategoryId);
+  if (!cat) return;
+  cat.links = cat.links || [];
+  cat.links.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    url,
+    displayName: name || url,
+  });
+  await saveSavedLinks();
+  cancelAddLink();
+  renderSavedLinks();
+}
+
+async function handleEditCategory(categoryId) {
+  editingCategoryId = categoryId;
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  if (!cat) return;
+  const name = window.prompt('Category name:', cat.name);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const exists = linksData.categories.some((c) => c.id !== categoryId && c.name.toLowerCase() === trimmed.toLowerCase());
+  if (exists) {
+    alert('Category name already exists');
+    return;
+  }
+  cat.name = trimmed;
+  editingCategoryId = null;
+  await saveSavedLinks();
+  renderSavedLinks();
+}
+
+async function handleDeleteCategory(categoryId) {
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  if (!cat || !confirm(`Delete category "${cat.name}" and all its links?`)) return;
+  linksData.categories = linksData.categories.filter((c) => c.id !== categoryId);
+  await saveSavedLinks();
+  renderSavedLinks();
+}
+
+async function handleEditLink(categoryId, linkId) {
+  editingLinkId = linkId;
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  const link = cat?.links?.find((l) => l.id === linkId);
+  if (!link) return;
+  const url = window.prompt('URL:', link.url);
+  if (url === null) return;
+  const displayName = window.prompt('Display name:', link.displayName || link.url);
+  if (displayName === null) return;
+  link.url = url.trim() || link.url;
+  link.displayName = (displayName || link.url).trim();
+  editingLinkId = null;
+  await saveSavedLinks();
+  renderSavedLinks();
+}
+
+async function handleDeleteLink(categoryId, linkId) {
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  const link = cat?.links?.find((l) => l.id === linkId);
+  if (!link || !confirm(`Delete "${link.displayName || link.url}"?`)) return;
+  cat.links = cat.links.filter((l) => l.id !== linkId);
+  await saveSavedLinks();
+  renderSavedLinks();
+}
+
+function initSavedLinks() {
+  document.getElementById('add-category-btn')?.addEventListener('click', async () => {
+    const name = window.prompt('Category name:');
+    if (!name?.trim()) return;
+    const trimmed = name.trim();
+    const exists = linksData.categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      alert('Category name already exists');
+      return;
+    }
+    linksData.categories.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      name: trimmed,
+      links: [],
+    });
+    await saveSavedLinks();
+    renderSavedLinks();
   });
 }
 
@@ -841,10 +1166,12 @@ async function init() {
 
   if (authenticated) {
     renderApp();
-    renderAuthArea(); // fetches profile and renders header logo
+    renderAuthArea();
     initQueryBuilder();
     loadSavedQueriesDropdown();
     loadActionLog();
+    initRoute();
+    initSavedLinks();
   } else {
     renderLogin();
     document.getElementById('login-btn').onclick = initLogin;

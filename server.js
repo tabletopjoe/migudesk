@@ -7,12 +7,22 @@ import { searchMessages, trashMessages } from './lib/gmail.js';
 import { getSavedQueries, addSavedQuery } from './lib/queries.js';
 import { getActionLog, appendToActionLog } from './lib/actionLog.js';
 import { getAccountData } from './lib/account.js';
+import { getLinks, saveLinksData } from './lib/links.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Session info (IP, etc.) - for home metadata
+app.get('/api/session-info', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || req.headers['x-real-ip']
+    || req.socket?.remoteAddress
+    || '—';
+  res.json({ ip });
+});
 
 // Auth status
 app.get('/auth/status', (req, res) => {
@@ -74,6 +84,31 @@ app.post('/api/search', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Search failed' });
+  }
+});
+
+// Saved links
+app.get('/api/links', (_req, res) => {
+  try {
+    const data = getLinks();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/links', (req, res) => {
+  const { categories } = req.body;
+  if (!Array.isArray(categories)) {
+    return res.status(400).json({ error: 'categories array is required' });
+  }
+  try {
+    const saved = saveLinksData({ categories });
+    res.json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
   }
 });
 

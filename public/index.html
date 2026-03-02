@@ -11,15 +11,52 @@
 </head>
 <body>
   <div id="app">
-    <header class="header">
-      <div class="logo-area">
-        <h1 class="logo">gWrassler</h1>
-        <a href="https://mail.google.com/mail/#inbox" target="_blank" rel="noopener noreferrer" class="logo-gmail-link" title="Open Gmail">↗</a>
-      </div>
-      <div id="auth-area"></div>
-    </header>
-
     <main id="main" class="main hidden">
+      <div class="app-chrome">
+        <nav class="nav-left" aria-label="Main navigation">
+          <div class="nav-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L2 18h20L12 2z"/>
+              <rect x="9" y="18" width="6" height="4" rx="0.5"/>
+            </svg>
+          </div>
+          <a href="#home" class="nav-tab nav-tab-links active" data-route="home" aria-label="Links">
+            <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </a>
+          <a href="#gmail" class="nav-tab nav-tab-gmail" data-route="gmail" aria-label="Gmail">
+            <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          </a>
+        </nav>
+        <div class="content-column">
+          <header class="header">
+            <div class="logo-area">
+              <span class="logo logo-home" data-route="home">megaDesk</span>
+              <span class="logo logo-gmail" data-route="gmail">
+                <span class="logo-text">gWrassler</span>
+                <a href="https://mail.google.com/mail/#inbox" target="_blank" rel="noopener noreferrer" class="logo-gmail-link" title="Open Gmail">↗</a>
+              </span>
+              <span class="logo logo-palette" data-route="palette" style="display:none">Palette</span>
+            </div>
+            <div id="auth-area"></div>
+          </header>
+          <div class="main-content">
+        <div class="module-view" id="module-home" data-route="home">
+          <div class="home-layout">
+            <div class="saved-links-area">
+              <div class="saved-links-top-row">
+                <button type="button" id="add-category-btn" class="saved-links-add-category" aria-label="Add category">+</button>
+                <div id="saved-links-categories" class="saved-links-categories"></div>
+              </div>
+              <div id="add-link-form-container"></div>
+            </div>
+            <div class="home-meta">
+              <div id="home-datetime" class="home-datetime"></div>
+              <h4 class="home-meta-title">Session / User context</h4>
+              <div id="home-session-list" class="home-session-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="module-view hidden" id="module-gmail" data-route="gmail">
       <div class="tabs-bar">
         <button type="button" class="tab active" data-tab="2">Search</button>
         <button type="button" class="tab" data-tab="1">Account</button>
@@ -103,6 +140,10 @@
 
       <div class="tab-panel hidden" id="tab-panel-3">
         <p class="tab-placeholder">Coming soon</p>
+      </div>
+      </div>
+          </div>
+        </div>
       </div>
     </main>
 

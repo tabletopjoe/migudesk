@@ -11,6 +11,8 @@
   --success: #2f855a;
   --radius: 8px;
   --radius-lg: 12px;
+  --radius-pill: 25px;
+  --chrome-size: 36px;
   --font: 'DM Sans', system-ui, sans-serif;
 }
 
@@ -34,12 +36,110 @@ body {
   flex-direction: column;
 }
 
-/* Header */
+/* App chrome - nav + content */
+.app-chrome {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.nav-left {
+  position: relative;
+  width: var(--chrome-size);
+  min-width: var(--chrome-size);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.35rem 0;
+  gap: 0.35rem;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.nav-left::after {
+  content: '';
+  position: absolute;
+  top: var(--chrome-size);
+  left: var(--chrome-size);
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.nav-logo {
+  width: calc(var(--chrome-size) - 8px);
+  height: calc(var(--chrome-size) - 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(79, 122, 90, 0.2);
+  border: 1px solid rgba(79, 122, 90, 0.4);
+  color: var(--accent);
+}
+
+.nav-logo svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--chrome-size) - 8px);
+  height: calc(var(--chrome-size) - 8px);
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+  background: rgba(79, 122, 90, 0.2);
+  border: 1px solid rgba(79, 122, 90, 0.4);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.nav-tab .nav-tab-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.nav-tab:hover {
+  color: var(--text);
+  background: rgba(79, 122, 90, 0.3);
+}
+
+.nav-tab.active {
+  color: var(--accent);
+  background: rgba(79, 122, 90, 0.35);
+  border-color: var(--accent);
+}
+
+.content-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Sign out - only for Gmail module */
+#auth-area {
+  display: none;
+}
+
+#app[data-route="gmail"] #auth-area {
+  display: block;
+}
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1.5rem;
+  padding: 0 1rem;
+  height: var(--chrome-size);
+  min-height: var(--chrome-size);
   border-bottom: 1px solid var(--border);
 }
 
@@ -50,7 +150,7 @@ body {
 }
 
 .logo {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   margin: 0;
   letter-spacing: -0.02em;
@@ -75,12 +175,12 @@ body {
 }
 
 #auth-area .logout {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--text-muted);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border-radius: var(--radius);
 }
 
@@ -92,14 +192,255 @@ body {
 /* Main */
 .main {
   flex: 1;
-  max-width: 90%;
-  width: 100%;
-  margin: 0 auto;
-  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .main.hidden {
   display: none;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 1.5rem;
+  max-width: 95%;
+  margin: 0 auto;
+  width: 100%;
+  background: var(--bg);
+}
+
+.module-view {
+  display: block;
+}
+
+.module-view.hidden {
+  display: none;
+}
+
+/* Home layout */
+.home-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.saved-links-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-links-top-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: -0.5rem;
+}
+
+.saved-links-add-category {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(79, 122, 90, 0.2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.saved-links-add-category:hover {
+  background: rgba(79, 122, 90, 0.35);
+}
+
+.saved-links-categories {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.saved-links-category {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.saved-links-category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  gap: 0.25rem;
+}
+
+.saved-links-category-header:hover {
+  background: rgba(79, 122, 90, 0.08);
+}
+
+.saved-links-category-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.saved-links-category-actions {
+  display: flex;
+  gap: 0.125rem;
+}
+
+.saved-links-category-links {
+  display: none;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.saved-links-category.expanded .saved-links-category-links {
+  display: block;
+}
+
+.saved-links-link,
+.saved-links-add-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.saved-links-link:hover,
+.saved-links-add-link:hover {
+  background: rgba(79, 122, 90, 0.12);
+}
+
+.saved-links-link a {
+  color: var(--text);
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-links-link a:hover {
+  color: var(--accent);
+}
+
+.saved-links-link-actions,
+.saved-links-category-actions {
+  display: flex;
+  gap: 0.125rem;
+}
+
+.saved-links-action-btn {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 2px;
+}
+
+.saved-links-action-btn:hover {
+  color: var(--accent);
+  background: rgba(79, 122, 90, 0.15);
+}
+
+.saved-links-add-link-row {
+  display: flex;
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed var(--border);
+}
+
+.saved-links-add-link {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.add-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.add-link-input {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+}
+
+.add-link-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.home-meta {
+  max-width: 16.666%;
+  margin-left: auto;
+  text-align: right;
+  font-size: 0.95em;
+}
+
+.home-datetime {
+  font-size: 0.89rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-meta-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+
+.home-session-list {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.home-session-entry {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-session-key {
+  font-weight: 500;
+  color: var(--text);
 }
 
 /* Tabs */
@@ -260,7 +601,7 @@ body {
   font-size: 1.75rem;
   line-height: 1;
   color: var(--text-muted);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   transition: color 0.15s, background 0.15s;
 }
 
@@ -552,7 +893,7 @@ body {
   color: #ffffff;
   background: #3d7d5b;
   border: 1px solid #658a76;
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -561,7 +902,15 @@ body {
   background: #658a76;
 }
 
-/* Buttons */
+/* Buttons - Gmail module uses pill shape */
+#module-gmail .btn,
+#module-gmail .query-add-btn,
+#module-gmail .query-clear-link,
+#module-gmail .query-copy-link,
+#module-gmail .query-gmail-link {
+  border-radius: var(--radius-pill);
+}
+
 .btn {
   font-family: inherit;
   font-size: 0.9375rem;
