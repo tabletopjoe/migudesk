@@ -377,13 +377,14 @@ async function saveSavedLinks() {
 
 function renderSavedLinks() {
   const container = document.getElementById('saved-links-categories');
-  const formContainer = document.getElementById('add-link-form-container');
   if (!container) return;
   container.innerHTML = '';
-  formContainer.innerHTML = '';
   linksData.categories.forEach((cat) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'saved-links-category-wrapper';
+    wrapper.dataset.categoryId = cat.id;
     const catEl = document.createElement('div');
-    catEl.className = 'saved-links-category';
+    catEl.className = 'saved-links-category expanded';
     catEl.dataset.categoryId = cat.id;
     const header = document.createElement('div');
     header.className = 'saved-links-category-header';
@@ -391,7 +392,6 @@ function renderSavedLinks() {
       <span class="saved-links-category-name">${escapeHtml(cat.name)}</span>
       <span class="saved-links-category-actions">
         <button type="button" class="saved-links-action-btn edit" data-action="edit-category" title="Edit">✎</button>
-        <button type="button" class="saved-links-action-btn delete" data-action="delete-category" title="Delete">×</button>
       </span>
     `;
     header.addEventListener('click', (e) => {
@@ -403,7 +403,6 @@ function renderSavedLinks() {
       } else {
         const btn = e.target.closest('.saved-links-action-btn');
         if (btn.dataset.action === 'edit-category') handleEditCategory(cat.id);
-        else if (btn.dataset.action === 'delete-category') handleDeleteCategory(cat.id);
       }
     });
     const linksDiv = document.createElement('div');
@@ -415,16 +414,13 @@ function renderSavedLinks() {
         <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.displayName || link.url)}</a>
         <span class="saved-links-link-actions">
           <button type="button" class="saved-links-action-btn edit" data-link-id="${escapeHtml(link.id)}" title="Edit">✎</button>
-          <button type="button" class="saved-links-action-btn delete" data-link-id="${escapeHtml(link.id)}" title="Delete">×</button>
         </span>
       `;
       linkEl.querySelector('.saved-links-link-actions').addEventListener('click', (e) => {
         const btn = e.target.closest('.saved-links-action-btn');
         if (!btn) return;
         e.preventDefault();
-        const id = btn.dataset.linkId;
-        if (btn.classList.contains('edit')) handleEditLink(cat.id, id);
-        else if (btn.classList.contains('delete')) handleDeleteLink(cat.id, id);
+        handleEditLink(cat.id, btn.dataset.linkId);
       });
       linksDiv.appendChild(linkEl);
     });
@@ -433,38 +429,128 @@ function renderSavedLinks() {
     const addLinkBtn = document.createElement('button');
     addLinkBtn.type = 'button';
     addLinkBtn.className = 'saved-links-add-link';
-    addLinkBtn.textContent = '+ add link';
+    addLinkBtn.textContent = '+';
+    addLinkBtn.title = 'Add link';
     addLinkBtn.addEventListener('click', () => showAddLinkForm(cat.id));
+    const openAllBtn = document.createElement('button');
+    openAllBtn.type = 'button';
+    openAllBtn.className = 'saved-links-open-all';
+    openAllBtn.innerHTML = 'All <span class="open-all-arrow">→</span>';
+    openAllBtn.title = 'Open all links in new tabs';
+    openAllBtn.addEventListener('click', () => openAllLinks(cat.links || []));
     addLinkRow.appendChild(addLinkBtn);
+    addLinkRow.appendChild(openAllBtn);
     linksDiv.appendChild(addLinkRow);
     catEl.appendChild(header);
     catEl.appendChild(linksDiv);
-    container.appendChild(catEl);
+    const linkFormContainer = document.createElement('div');
+    linkFormContainer.className = 'link-form-flyout';
+    linkFormContainer.dataset.categoryId = cat.id;
+    wrapper.appendChild(catEl);
+    wrapper.appendChild(linkFormContainer);
+    container.appendChild(wrapper);
   });
+}
+
+function openAllLinks(links) {
+  links.forEach((link) => {
+    if (link?.url) window.open(link.url, '_blank', 'noopener,noreferrer');
+  });
+}
+
+function getLinkFormContainer(categoryId) {
+  return document.querySelector(`.link-form-flyout[data-category-id="${categoryId}"]`);
+}
+
+function clearLinkForm(categoryId) {
+  const container = getLinkFormContainer(categoryId);
+  if (container) container.innerHTML = '';
 }
 
 function showAddLinkForm(categoryId) {
   addLinkCategoryId = categoryId;
-  const formContainer = document.getElementById('add-link-form-container');
+  clearLinkForm(categoryId);
+  const formContainer = getLinkFormContainer(categoryId);
+  if (!formContainer) return;
   const form = document.createElement('div');
   form.className = 'add-link-form';
   form.innerHTML = `
     <input type="url" id="add-link-url" class="add-link-input" placeholder="URL" />
     <input type="text" id="add-link-name" class="add-link-input" placeholder="Display name" />
     <div class="add-link-actions">
-      <button type="button" id="add-link-submit" class="btn btn-primary btn-sm">Add</button>
-      <button type="button" id="add-link-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+      <button type="button" id="add-link-submit" class="btn btn-primary btn-form">Add</button>
+      <button type="button" id="add-link-cancel" class="btn btn-secondary btn-form">Cancel</button>
     </div>
   `;
-  formContainer.innerHTML = '';
   formContainer.appendChild(form);
   form.querySelector('#add-link-submit').addEventListener('click', () => submitAddLink());
   form.querySelector('#add-link-cancel').addEventListener('click', () => cancelAddLink());
 }
 
 function cancelAddLink() {
+  if (addLinkCategoryId) clearLinkForm(addLinkCategoryId);
   addLinkCategoryId = null;
-  document.getElementById('add-link-form-container').innerHTML = '';
+}
+
+function showEditLinkForm(categoryId, linkId) {
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  const link = cat?.links?.find((l) => l.id === linkId);
+  if (!link) return;
+  editingCategoryId = categoryId;
+  editingLinkId = linkId;
+  clearLinkForm(categoryId);
+  const formContainer = getLinkFormContainer(categoryId);
+  if (!formContainer) return;
+  const form = document.createElement('div');
+  form.className = 'add-link-form';
+  form.innerHTML = `
+    <input type="url" id="edit-link-url" class="add-link-input" placeholder="URL" value="${escapeHtml(link.url)}" />
+    <input type="text" id="edit-link-name" class="add-link-input" placeholder="Display name" value="${escapeHtml(link.displayName || link.url)}" />
+    <div class="add-link-actions">
+      <button type="button" id="edit-link-submit" class="btn btn-primary btn-form">Update</button>
+      <button type="button" id="edit-link-cancel" class="btn btn-secondary btn-form">Cancel</button>
+      <button type="button" id="edit-link-delete" class="btn btn-danger btn-form">Delete</button>
+    </div>
+  `;
+  formContainer.appendChild(form);
+  form.querySelector('#edit-link-submit').addEventListener('click', () => submitEditLink());
+  form.querySelector('#edit-link-cancel').addEventListener('click', () => cancelEditLink());
+  form.querySelector('#edit-link-delete').addEventListener('click', () => handleDeleteLinkFromForm());
+}
+
+function cancelEditLink() {
+  if (editingCategoryId) clearLinkForm(editingCategoryId);
+  editingCategoryId = null;
+  editingLinkId = null;
+}
+
+async function handleDeleteLinkFromForm() {
+  if (!editingCategoryId || !editingLinkId) return;
+  const ok = await modalConfirm('Delete this link?');
+  if (!ok) return;
+  await handleDeleteLink(editingCategoryId, editingLinkId, true);
+  cancelEditLink();
+}
+
+async function submitEditLink() {
+  const urlInput = document.getElementById('edit-link-url');
+  const nameInput = document.getElementById('edit-link-name');
+  const url = urlInput?.value?.trim();
+  const name = nameInput?.value?.trim();
+  if (!url) {
+    await modalAlert('URL is required');
+    return;
+  }
+  const cat = linksData.categories.find((c) => c.id === editingCategoryId);
+  const link = cat?.links?.find((l) => l.id === editingLinkId);
+  if (!link) return;
+  link.url = url;
+  link.displayName = (name || url).trim();
+  editingCategoryId = null;
+  editingLinkId = null;
+  await saveSavedLinks();
+  cancelEditLink();
+  renderSavedLinks();
 }
 
 async function submitAddLink() {
@@ -518,28 +604,18 @@ async function handleDeleteCategory(categoryId) {
   renderSavedLinks();
 }
 
-async function handleEditLink(categoryId, linkId) {
-  editingLinkId = linkId;
-  const cat = linksData.categories.find((c) => c.id === categoryId);
-  const link = cat?.links?.find((l) => l.id === linkId);
-  if (!link) return;
-  const url = await modalPrompt('URL:', link.url);
-  if (url === null) return;
-  const displayName = await modalPrompt('Display name:', link.displayName || link.url);
-  if (displayName === null) return;
-  link.url = url.trim() || link.url;
-  link.displayName = (displayName || link.url).trim();
-  editingLinkId = null;
-  await saveSavedLinks();
-  renderSavedLinks();
+function handleEditLink(categoryId, linkId) {
+  showEditLinkForm(categoryId, linkId);
 }
 
-async function handleDeleteLink(categoryId, linkId) {
+async function handleDeleteLink(categoryId, linkId, skipConfirm = false) {
   const cat = linksData.categories.find((c) => c.id === categoryId);
   const link = cat?.links?.find((l) => l.id === linkId);
   if (!link) return;
-  const ok = await modalConfirm(`Delete "${link.displayName || link.url}"?`);
-  if (!ok) return;
+  if (!skipConfirm) {
+    const ok = await modalConfirm(`Delete "${link.displayName || link.url}"?`);
+    if (!ok) return;
+  }
   cat.links = cat.links.filter((l) => l.id !== linkId);
   await saveSavedLinks();
   renderSavedLinks();

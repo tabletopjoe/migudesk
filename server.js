@@ -202,5 +202,5 @@ app.post('/api/trash', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
-  console.log(`Gmail Mgmt running at http://localhost:${PORT}`);
+  console.log(`megaDesk running at http://localhost:${PORT}`);
 });
