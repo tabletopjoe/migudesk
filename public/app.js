@@ -291,21 +291,28 @@ function initRoute() {
 }
 
 function formatDateTimeEST() {
-  return new Date().toLocaleString('en-US', {
+  const d = new Date();
+  const dateStr = d.toLocaleDateString('en-US', {
     timeZone: 'America/New_York',
     dateStyle: 'full',
+  });
+  const timeStr = d.toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York',
     timeStyle: 'long',
   });
+  return { dateStr, timeStr };
 }
 
 function updateHomeDatetime() {
   const el = document.getElementById('home-datetime');
-  if (el) el.textContent = formatDateTimeEST();
+  if (!el) return;
+  const { dateStr, timeStr } = formatDateTimeEST();
+  el.innerHTML = `${escapeHtml(dateStr)}<br>at ${escapeHtml(timeStr)}`;
 }
 
 function getClientSessionInfo() {
   const conn = navigator.connection || {};
-  return {
+  const items = {
     'IP address': '—',
     'User agent': navigator.userAgent || '—',
     'Platform': navigator.platform || '—',
@@ -321,6 +328,15 @@ function getClientSessionInfo() {
     'Secure context': window.isSecureContext ? 'Yes' : 'No',
     'Referrer': document.referrer || '(none)',
   };
+  if (conn.downlink != null) items['Downlink (Mbps)'] = String(conn.downlink);
+  if (conn.rtt != null) items['RTT (ms)'] = String(conn.rtt);
+  if (conn.saveData != null) items['Data saver'] = conn.saveData ? 'On' : 'Off';
+  if (navigator.deviceMemory != null) items['Device memory (GB)'] = String(navigator.deviceMemory);
+  if (navigator.hardwareConcurrency != null) items['CPU cores'] = String(navigator.hardwareConcurrency);
+  items['Screen'] = `${screen.width}×${screen.height}`;
+  items['Viewport'] = `${window.innerWidth}×${window.innerHeight}`;
+  items['Origin'] = window.location.origin || '—';
+  return items;
 }
 
 async function fetchAndMergeSessionInfo() {
@@ -356,6 +372,10 @@ let linksData = { categories: [] };
 let addLinkCategoryId = null;
 let editingLinkId = null;
 let editingCategoryId = null;
+let visibleCategoryIds = new Set();
+const MAX_VISIBLE_CATEGORIES = 7;
+let multiOpenCategoryId = null;
+let multiOpenSelectedIds = new Set();
 
 async function loadSavedLinks() {
   try {
@@ -363,6 +383,45 @@ async function loadSavedLinks() {
     if (!linksData.categories) linksData.categories = [];
   } catch {
     linksData = { categories: [] };
+  }
+  initVisibleCategoryIds();
+  renderSavedLinks();
+}
+
+function initVisibleCategoryIds() {
+  const cats = linksData.categories || [];
+  const existing = [...visibleCategoryIds].filter((id) => cats.some((c) => c.id === id));
+  visibleCategoryIds = new Set(existing);
+  for (const cat of cats) {
+    if (visibleCategoryIds.size >= MAX_VISIBLE_CATEGORIES) break;
+    visibleCategoryIds.add(cat.id);
+  }
+}
+
+function renderCategoryList() {
+  const container = document.getElementById('saved-links-category-list');
+  if (!container) return;
+  container.innerHTML = '';
+  (linksData.categories || []).forEach((cat) => {
+    const item = document.createElement('div');
+    item.className = 'saved-links-category-list-item';
+    if (visibleCategoryIds.has(cat.id)) item.classList.add('visible');
+    item.dataset.categoryId = cat.id;
+    item.textContent = cat.name;
+    item.addEventListener('click', () => toggleCategoryVisible(cat.id));
+    container.appendChild(item);
+  });
+}
+
+function toggleCategoryVisible(categoryId) {
+  if (visibleCategoryIds.has(categoryId)) {
+    visibleCategoryIds.delete(categoryId);
+  } else {
+    if (visibleCategoryIds.size >= MAX_VISIBLE_CATEGORIES) {
+      const first = visibleCategoryIds.values().next().value;
+      visibleCategoryIds.delete(first);
+    }
+    visibleCategoryIds.add(categoryId);
   }
   renderSavedLinks();
 }
@@ -379,12 +438,12 @@ function renderSavedLinks() {
   const container = document.getElementById('saved-links-categories');
   if (!container) return;
   container.innerHTML = '';
-  linksData.categories.forEach((cat) => {
+  (linksData.categories || []).filter((cat) => visibleCategoryIds.has(cat.id)).forEach((cat) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'saved-links-category-wrapper';
     wrapper.dataset.categoryId = cat.id;
     const catEl = document.createElement('div');
-    catEl.className = 'saved-links-category expanded';
+    catEl.className = 'saved-links-category expanded' + (multiOpenCategoryId === cat.id ? ' multi-open-mode' : '');
     catEl.dataset.categoryId = cat.id;
     const header = document.createElement('div');
     header.className = 'saved-links-category-header';
@@ -410,18 +469,29 @@ function renderSavedLinks() {
     (cat.links || []).forEach((link) => {
       const linkEl = document.createElement('div');
       linkEl.className = 'saved-links-link';
+      linkEl.dataset.linkId = link.id;
       linkEl.innerHTML = `
         <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.displayName || link.url)}</a>
         <span class="saved-links-link-actions">
           <button type="button" class="saved-links-action-btn edit" data-link-id="${escapeHtml(link.id)}" title="Edit">✎</button>
         </span>
       `;
+      linkEl.addEventListener('click', (e) => {
+        if (e.target.closest('.saved-links-link-actions')) return;
+        if (multiOpenCategoryId === cat.id) {
+          e.preventDefault();
+          toggleMultiOpenLink(cat.id, link.id, linkEl);
+        }
+      });
       linkEl.querySelector('.saved-links-link-actions').addEventListener('click', (e) => {
         const btn = e.target.closest('.saved-links-action-btn');
         if (!btn) return;
         e.preventDefault();
         handleEditLink(cat.id, btn.dataset.linkId);
       });
+      if (multiOpenCategoryId === cat.id && multiOpenSelectedIds.has(link.id)) {
+        linkEl.classList.add('multi-open-selected');
+      }
       linksDiv.appendChild(linkEl);
     });
     const addLinkRow = document.createElement('div');
@@ -429,37 +499,74 @@ function renderSavedLinks() {
     const addLinkBtn = document.createElement('button');
     addLinkBtn.type = 'button';
     addLinkBtn.className = 'saved-links-add-link';
-    addLinkBtn.textContent = '+';
-    addLinkBtn.title = 'Add link';
-    addLinkBtn.addEventListener('click', () => showAddLinkForm(cat.id));
+    addLinkBtn.textContent = multiOpenCategoryId === cat.id ? '×' : '+';
+    addLinkBtn.title = multiOpenCategoryId === cat.id ? 'Cancel multi-open' : 'Add link';
+    addLinkBtn.addEventListener('click', () => {
+      if (multiOpenCategoryId === cat.id) {
+        multiOpenCategoryId = null;
+        multiOpenSelectedIds.clear();
+        renderSavedLinks();
+      } else {
+        showAddLinkForm(cat.id);
+      }
+    });
     const openAllBtn = document.createElement('button');
     openAllBtn.type = 'button';
-    openAllBtn.className = 'saved-links-open-all';
-    openAllBtn.innerHTML = 'All <span class="open-all-arrow">→</span>';
-    openAllBtn.title = 'Open all links in new tabs';
-    openAllBtn.addEventListener('click', () => openAllLinks(cat.links || []));
+    openAllBtn.className = 'saved-links-open-all' + (multiOpenCategoryId === cat.id ? ' multi-open-active' : '');
+    openAllBtn.innerHTML = multiOpenCategoryId === cat.id ? 'Open selected' : 'All <span class="open-all-arrow">→</span>';
+    openAllBtn.title = multiOpenCategoryId === cat.id ? 'Open selected links in new tabs' : 'Multi-select links to open';
+    openAllBtn.addEventListener('click', () => toggleMultiOpenMode(cat));
     addLinkRow.appendChild(addLinkBtn);
     addLinkRow.appendChild(openAllBtn);
     linksDiv.appendChild(addLinkRow);
     catEl.appendChild(header);
     catEl.appendChild(linksDiv);
+    const categoryEditFlyout = document.createElement('div');
+    categoryEditFlyout.className = 'category-edit-flyout';
+    categoryEditFlyout.dataset.categoryId = cat.id;
     const linkFormContainer = document.createElement('div');
     linkFormContainer.className = 'link-form-flyout';
     linkFormContainer.dataset.categoryId = cat.id;
     wrapper.appendChild(catEl);
+    wrapper.appendChild(categoryEditFlyout);
     wrapper.appendChild(linkFormContainer);
     container.appendChild(wrapper);
   });
+  renderCategoryList();
 }
 
-function openAllLinks(links) {
-  links.forEach((link) => {
-    if (link?.url) window.open(link.url, '_blank', 'noopener,noreferrer');
-  });
+function toggleMultiOpenMode(cat) {
+  if (multiOpenCategoryId === cat.id) {
+    const links = (cat.links || []).filter((l) => multiOpenSelectedIds.has(l.id));
+    links.forEach((l) => {
+      if (l?.url) window.open(l.url, '_blank', 'noopener,noreferrer');
+    });
+    multiOpenCategoryId = null;
+    multiOpenSelectedIds.clear();
+    renderSavedLinks();
+  } else {
+    multiOpenCategoryId = cat.id;
+    multiOpenSelectedIds = new Set((cat.links || []).map((l) => l.id));
+    renderSavedLinks();
+  }
+}
+
+function toggleMultiOpenLink(categoryId, linkId, linkEl) {
+  if (multiOpenSelectedIds.has(linkId)) {
+    multiOpenSelectedIds.delete(linkId);
+    linkEl.classList.remove('multi-open-selected');
+  } else {
+    multiOpenSelectedIds.add(linkId);
+    linkEl.classList.add('multi-open-selected');
+  }
 }
 
 function getLinkFormContainer(categoryId) {
   return document.querySelector(`.link-form-flyout[data-category-id="${categoryId}"]`);
+}
+
+function getCategoryEditFlyout(categoryId) {
+  return document.querySelector(`.category-edit-flyout[data-category-id="${categoryId}"]`);
 }
 
 function clearLinkForm(categoryId) {
@@ -575,15 +682,47 @@ async function submitAddLink() {
   renderSavedLinks();
 }
 
-async function handleEditCategory(categoryId) {
-  editingCategoryId = categoryId;
+function handleEditCategory(categoryId) {
+  showEditCategoryForm(categoryId);
+}
+
+function showEditCategoryForm(categoryId) {
   const cat = linksData.categories.find((c) => c.id === categoryId);
   if (!cat) return;
-  const name = await modalPrompt('Category name:', cat.name);
-  if (name === null) return;
-  const trimmed = name.trim();
+  editingCategoryId = categoryId;
+  const flyout = getCategoryEditFlyout(categoryId);
+  if (!flyout) return;
+  flyout.innerHTML = '';
+  const form = document.createElement('div');
+  form.className = 'add-link-form category-edit-form';
+  form.innerHTML = `
+    <input type="text" id="edit-category-name" class="add-link-input" placeholder="Category name" value="${escapeHtml(cat.name)}" />
+    <div class="add-link-actions">
+      <button type="button" id="edit-category-submit" class="btn btn-primary btn-form">Update</button>
+      <button type="button" id="edit-category-cancel" class="btn btn-secondary btn-form">Cancel</button>
+    </div>
+  `;
+  flyout.appendChild(form);
+  form.querySelector('#edit-category-submit').addEventListener('click', () => submitEditCategory());
+  form.querySelector('#edit-category-cancel').addEventListener('click', () => cancelEditCategory());
+  form.querySelector('#edit-category-name').focus();
+}
+
+function cancelEditCategory() {
+  if (editingCategoryId) {
+    const flyout = getCategoryEditFlyout(editingCategoryId);
+    if (flyout) flyout.innerHTML = '';
+  }
+  editingCategoryId = null;
+}
+
+async function submitEditCategory() {
+  const input = document.getElementById('edit-category-name');
+  const trimmed = input?.value?.trim();
   if (!trimmed) return;
-  const exists = linksData.categories.some((c) => c.id !== categoryId && c.name.toLowerCase() === trimmed.toLowerCase());
+  const cat = linksData.categories.find((c) => c.id === editingCategoryId);
+  if (!cat) return;
+  const exists = linksData.categories.some((c) => c.id !== editingCategoryId && c.name.toLowerCase() === trimmed.toLowerCase());
   if (exists) {
     await modalAlert('Category name already exists');
     return;
@@ -591,6 +730,7 @@ async function handleEditCategory(categoryId) {
   cat.name = trimmed;
   editingCategoryId = null;
   await saveSavedLinks();
+  cancelEditCategory();
   renderSavedLinks();
 }
 
@@ -599,6 +739,7 @@ async function handleDeleteCategory(categoryId) {
   if (!cat) return;
   const ok = await modalConfirm(`Delete category "${cat.name}" and all its links?`);
   if (!ok) return;
+  visibleCategoryIds.delete(categoryId);
   linksData.categories = linksData.categories.filter((c) => c.id !== categoryId);
   await saveSavedLinks();
   renderSavedLinks();
@@ -622,6 +763,10 @@ async function handleDeleteLink(categoryId, linkId, skipConfirm = false) {
 }
 
 function initSavedLinks() {
+  document.getElementById('saved-links-aux-btn')?.addEventListener('click', () => {
+    const panel = document.getElementById('saved-links-category-list');
+    if (panel) panel.classList.toggle('hidden');
+  });
   document.getElementById('add-category-btn')?.addEventListener('click', async () => {
     const name = await modalPrompt('Category name:');
     if (!name?.trim()) return;
@@ -631,11 +776,15 @@ function initSavedLinks() {
       await modalAlert('Category name already exists');
       return;
     }
+    const newId = Date.now().toString(36) + Math.random().toString(36).slice(2);
     linksData.categories.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      id: newId,
       name: trimmed,
       links: [],
     });
+    if (visibleCategoryIds.size < MAX_VISIBLE_CATEGORIES) {
+      visibleCategoryIds.add(newId);
+    }
     await saveSavedLinks();
     renderSavedLinks();
   });
