@@ -3,6 +3,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { getAuthClient, getAuthUrl, exchangeCodeForToken, TOKEN_PATH } from './lib/auth.js';
+
+/** Returns true if the error indicates the stored token is invalid (user must re-auth). */
+function isInvalidGrant(err) {
+  const msg = (err?.message || '').toLowerCase();
+  const dataError = err?.response?.data?.error;
+  return msg.includes('invalid_grant') || dataError === 'invalid_grant';
+}
+
+/** On invalid_grant, delete token so user can re-auth. Returns error payload for response. */
+function handleAuthError(err, res) {
+  if (isInvalidGrant(err) && fs.existsSync(TOKEN_PATH)) {
+    try {
+      fs.unlinkSync(TOKEN_PATH);
+    } catch (_) {}
+    return res.status(401).json({
+      error: 'invalid_grant',
+      message: 'Your session expired. Please sign in again.',
+    });
+  }
+  return null;
+}
 import { searchMessages, trashMessages } from './lib/gmail.js';
 import { getSavedQueries, addSavedQuery } from './lib/queries.js';
 import { getActionLog, appendToActionLog } from './lib/actionLog.js';
@@ -83,6 +104,8 @@ app.post('/api/search', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
+    const authErr = handleAuthError(err, res);
+    if (authErr) return;
     res.status(500).json({ error: err.message || 'Search failed' });
   }
 });
@@ -151,6 +174,8 @@ app.get('/api/account-data', async (_req, res) => {
     res.json(data);
   } catch (err) {
     console.error(err);
+    const authErr = handleAuthError(err, res);
+    if (authErr) return;
     res.status(500).json({ error: err.message || 'Failed to get account data' });
   }
 });
@@ -195,6 +220,8 @@ app.post('/api/trash', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
+    const authErr = handleAuthError(err, res);
+    if (authErr) return;
     res.status(500).json({ error: err.message || 'Trash failed' });
   }
 });

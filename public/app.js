@@ -1,7 +1,10 @@
 const API = {
   async get(path) {
     const r = await fetch(path);
-    if (!r.ok) throw new Error(r.statusText);
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      throw new Error(data.message || data.error || r.statusText);
+    }
     return r.json();
   },
   async post(path, body) {
@@ -12,7 +15,7 @@ const API = {
     });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));
-      throw new Error(data.error || r.statusText);
+      throw new Error(data.message || data.error || r.statusText);
     }
     return r.json();
   },
@@ -24,7 +27,7 @@ const API = {
     });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));
-      throw new Error(data.error || r.statusText);
+      throw new Error(data.message || data.error || r.statusText);
     }
     return r.json();
   },
@@ -212,6 +215,21 @@ function modalConfirm(message) {
 async function checkAuth() {
   const { authenticated } = await API.get('/auth/status');
   return authenticated;
+}
+
+/** When a Gmail API error may mean session expired, re-check auth and show login if needed. */
+async function handleGmailApiError(e, fallbackMsg) {
+  const msg = e.message || fallbackMsg;
+  const stillAuth = await checkAuth();
+  if (!stillAuth) {
+    renderLogin();
+    document.getElementById('login-btn').onclick = initLogin;
+    const err = document.getElementById('login-error');
+    err.textContent = msg;
+    show(err);
+  } else {
+    alert(msg);
+  }
 }
 
 function renderLogin() {
@@ -884,14 +902,30 @@ function formatLogTimestamp() {
   });
 }
 
+const ACTION_LOG_SEARCH_LIMIT = 12;
+
 function renderLogEntry(timestamp, message) {
-  const log = document.getElementById('action-log');
-  if (!log) return;
-  const entry = document.createElement('div');
-  entry.className = 'action-log-entry';
-  entry.textContent = `[${timestamp}]: ${message}`;
-  log.appendChild(entry);
-  log.scrollTop = log.scrollHeight;
+  const text = `[${timestamp}]: ${message}`;
+  // Account tab: append to full scrollable log
+  const logAccount = document.getElementById('action-log-account');
+  if (logAccount) {
+    const entry = document.createElement('div');
+    entry.className = 'action-log-entry';
+    entry.textContent = text;
+    logAccount.appendChild(entry);
+    logAccount.scrollTop = logAccount.scrollHeight;
+  }
+  // Search tab: append, keep last 12 only
+  const logSearch = document.getElementById('action-log-search');
+  if (logSearch) {
+    const entry = document.createElement('div');
+    entry.className = 'action-log-entry';
+    entry.textContent = text;
+    logSearch.appendChild(entry);
+    while (logSearch.children.length > ACTION_LOG_SEARCH_LIMIT) {
+      logSearch.removeChild(logSearch.firstChild);
+    }
+  }
 }
 
 async function logAction(message) {
@@ -1047,7 +1081,29 @@ function addClause(operatorKey, initial) {
 async function loadActionLog() {
   try {
     const entries = await API.get('/api/action-log');
-    entries.forEach((e) => renderLogEntry(e.timestamp, e.message));
+    // Account tab: full history
+    const logAccount = document.getElementById('action-log-account');
+    if (logAccount) {
+      logAccount.innerHTML = '';
+      entries.forEach((e) => {
+        const div = document.createElement('div');
+        div.className = 'action-log-entry';
+        div.textContent = `[${e.timestamp}]: ${e.message}`;
+        logAccount.appendChild(div);
+      });
+    }
+    // Search tab: last 12 only
+    const logSearch = document.getElementById('action-log-search');
+    if (logSearch) {
+      logSearch.innerHTML = '';
+      const last12 = entries.slice(-ACTION_LOG_SEARCH_LIMIT);
+      last12.forEach((e) => {
+        const div = document.createElement('div');
+        div.className = 'action-log-entry';
+        div.textContent = `[${e.timestamp}]: ${e.message}`;
+        logSearch.appendChild(div);
+      });
+    }
   } catch {
     // ignore
   }
@@ -1209,6 +1265,11 @@ async function loadAccountData() {
       ${limit && pct != null ? `<div class="account-storage-bar"><div class="account-storage-fill" style="width: ${Math.min(100, parseFloat(pct))}%"></div></div>` : ''}
     `;
   } catch (e) {
+    const stillAuth = await checkAuth();
+    if (!stillAuth) {
+      await handleGmailApiError(e, 'Failed to load account data');
+      return;
+    }
     el.innerHTML = `<p class="tab-placeholder tab-error">${escapeHtml(e.message || 'Failed to load account data')}</p>`;
   }
 }
@@ -1420,7 +1481,7 @@ async function runSearch() {
     renderResults(data);
     logAction(`Searched: ${query}`);
   } catch (e) {
-    alert(e.message || 'Search failed');
+    await handleGmailApiError(e, 'Search failed');
   } finally {
     hide(loading);
   }
@@ -1479,7 +1540,7 @@ async function loadMore(pageToken) {
     applySort();
     updateDeleteButton();
   } catch (e) {
-    alert(e.message || 'Failed to load more');
+    await handleGmailApiError(e, 'Failed to load more');
   } finally {
     hide(loading);
   }
@@ -1504,7 +1565,7 @@ async function doTrash() {
     updateDeleteButton();
     logAction(`Deleted ${ids.length} item${ids.length === 1 ? '' : 's'}`);
   } catch (e) {
-    alert(e.message || 'Failed to move to trash');
+    await handleGmailApiError(e, 'Failed to move to trash');
   } finally {
     btn.disabled = false;
   }

@@ -641,7 +641,7 @@ body {
 
 .account-data-title {
   margin: 0 0 1rem;
-  font-size: 1rem;
+  font-size: 0.75rem; /* 25% smaller than 1rem */
   font-weight: 600;
   color: var(--text);
 }
@@ -651,7 +651,7 @@ body {
   grid-template-columns: auto 1fr;
   gap: 0.5rem 1.5rem;
   margin: 0 0 1rem;
-  font-size: 0.9375rem;
+  font-size: 0.703125rem; /* 25% smaller than 0.9375rem */
 }
 
 .account-data-list dt {
@@ -698,8 +698,15 @@ body {
   padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
   margin-bottom: 1rem;
+}
+
+/* Search tab: query preview connects to tabs (both white) */
+#tab-panel-2.tab-panel {
+  border-top: none;
+  border-radius: 0 var(--radius) var(--radius) var(--radius);
 }
 
 .query-preview-content {
@@ -1150,7 +1157,7 @@ body {
 .results-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.7875rem; /* ~10% smaller than 0.875rem */
 }
 
 .results-table thead {
@@ -1159,7 +1166,7 @@ body {
 
 .results-table th {
   text-align: left;
-  padding: 0.75rem 1rem;
+  padding: 0.35rem 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
@@ -1180,7 +1187,7 @@ body {
 }
 
 .results-table th.sortable .sort-icon {
-  font-size: 0.75rem;
+  font-size: 0.675rem;
   opacity: 0.8;
   margin-left: 0.15rem;
 }
@@ -1227,7 +1234,7 @@ body {
 }
 
 .results-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.35rem 0.75rem;
   vertical-align: top;
 }
 
@@ -1254,12 +1261,12 @@ body {
 
 .results-table td.col-size {
   color: var(--text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.73125rem;
 }
 
 .results-table td.col-preview {
   color: var(--text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.73125rem;
 }
 
 .results-table td.col-open {
@@ -1270,8 +1277,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.4rem;
+  height: 1.4rem;
   color: var(--text-muted);
   text-decoration: none;
   border-radius: var(--radius);
@@ -1319,19 +1326,28 @@ body {
 }
 
 .action-log {
-  max-height: 160px;
-  overflow-y: auto;
-  padding: 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 0.8125rem;
   color: var(--text);
 }
 
-.action-log-entry {
+/* Account tab: full history in scrollable window */
+.action-log-scrollable {
+  max-height: 400px; /* 2.5x previous 160px */
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.action-log-scrollable .action-log-entry {
   padding: 0.2rem 0;
+}
+
+/* Search tab: last 12 entries, plain text (no box, no scroll) */
+.action-log-inline .action-log-entry {
+  padding: 0.1rem 0;
 }
 
 /* Login */

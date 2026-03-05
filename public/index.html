@@ -60,7 +60,6 @@
       <div class="tabs-bar">
         <button type="button" class="tab active" data-tab="2">Search</button>
         <button type="button" class="tab" data-tab="1">Account</button>
-        <button type="button" class="tab" data-tab="3">Tab 3</button>
       </div>
       <div class="tab-panel hidden" id="tab-panel-1">
         <div class="account-data">
@@ -69,6 +68,10 @@
             <p class="tab-placeholder">Loading…</p>
           </div>
         </div>
+        <section class="action-log-section action-log-section-account">
+          <div class="action-log-label">Action log</div>
+          <div id="action-log-account" class="action-log action-log-scrollable"></div>
+        </section>
       </div>
       <div class="tab-panel" id="tab-panel-2">
       <section class="query-section">
@@ -132,14 +135,10 @@
         <div id="results-footer" class="results-footer"></div>
       </section>
 
-      <section class="action-log-section">
+      <section class="action-log-section action-log-section-search">
         <div class="action-log-label">Action log</div>
-        <div id="action-log" class="action-log"></div>
+        <div id="action-log-search" class="action-log action-log-inline"></div>
       </section>
-      </div>
-
-      <div class="tab-panel hidden" id="tab-panel-3">
-        <p class="tab-placeholder">Coming soon</p>
       </div>
       </div>
           </div>
