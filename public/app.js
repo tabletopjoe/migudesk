@@ -271,13 +271,15 @@ function escapeHtml(s) {
 
 function getRouteFromHash() {
   const hash = (window.location.hash || '#home').slice(1);
-  return hash === 'gmail' ? 'gmail' : 'home';
+  if (hash === 'gmail') return 'gmail';
+  if (hash === 'palette') return 'palette';
+  return 'home';
 }
 
 let homeDatetimeInterval = null;
 
 function renderRoute(route) {
-  const r = route === 'gmail' ? 'gmail' : 'home';
+  const r = route === 'gmail' ? 'gmail' : route === 'palette' ? 'palette' : 'home';
   const app = document.getElementById('app');
   app.dataset.route = r;
   document.querySelectorAll('.nav-tab').forEach((a) => {
@@ -1571,6 +1573,341 @@ async function doTrash() {
   }
 }
 
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) r = g = b = l;
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  const v = max;
+  const d = max - min;
+  const s = max === 0 ? 0 : d / max;
+  if (max !== min) {
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
+}
+
+function hsvToRgb(h, s, v) {
+  h /= 360; s /= 100; v /= 100;
+  let r, g, b;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+function rgbToHex(r, g, b, a) {
+  const pad = (n) => n.toString(16).padStart(2, '0');
+  return (a < 255) ? `#${pad(r)}${pad(g)}${pad(b)}${pad(a)}` : `#${pad(r)}${pad(g)}${pad(b)}`;
+}
+
+function hexToRgb(hex) {
+  hex = hex.replace(/^#/, '').trim();
+  if (hex.length === 6) {
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return { r: isNaN(r) ? 128 : r, g: isNaN(g) ? 128 : g, b: isNaN(b) ? 128 : b, a: 255 };
+  }
+  if (hex.length === 8) {
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const a = parseInt(hex.slice(6, 8), 16);
+    return { r: isNaN(r) ? 128 : r, g: isNaN(g) ? 128 : g, b: isNaN(b) ? 128 : b, a: isNaN(a) ? 255 : a };
+  }
+  return null;
+}
+
+const PALETTE_MAX_SLOTS = 7;
+
+function initPalette() {
+  const gallery = document.getElementById('palette-swatch-gallery');
+  const centerArea = document.getElementById('palette-center-area');
+  const bgSelectedLabel = document.getElementById('palette-bg-selected-label');
+  let paletteSlots = [{ r: 128, g: 128, b: 128, a: 255 }];
+  let paletteCenterBg = { r: 255, g: 255, b: 255, a: 255 };
+  let selectedSlotIndex = 0;
+  let editingBackground = false;
+  let updating = false;
+
+  const setInputsFromRgba = (rgba) => {
+    const { r, g, b, a } = rgba;
+    document.getElementById('palette-r').value = r;
+    document.getElementById('palette-r-num').value = r;
+    document.getElementById('palette-g').value = g;
+    document.getElementById('palette-g-num').value = g;
+    document.getElementById('palette-b').value = b;
+    document.getElementById('palette-b-num').value = b;
+    document.getElementById('palette-a').value = a;
+    document.getElementById('palette-a-num').value = a;
+    const hsl = rgbToHsl(r, g, b);
+    document.getElementById('palette-hsl-h').value = hsl.h;
+    document.getElementById('palette-hsl-h-num').value = hsl.h;
+    document.getElementById('palette-hsl-s').value = hsl.s;
+    document.getElementById('palette-hsl-s-num').value = hsl.s;
+    document.getElementById('palette-hsl-l').value = hsl.l;
+    document.getElementById('palette-hsl-l-num').value = hsl.l;
+    const hsv = rgbToHsv(r, g, b);
+    document.getElementById('palette-hsv-h').value = hsv.h;
+    document.getElementById('palette-hsv-h-num').value = hsv.h;
+    document.getElementById('palette-hsv-s').value = hsv.s;
+    document.getElementById('palette-hsv-s-num').value = hsv.s;
+    document.getElementById('palette-hsv-v').value = hsv.v;
+    document.getElementById('palette-hsv-v-num').value = hsv.v;
+    document.getElementById('palette-hex').value = rgbToHex(r, g, b, a).slice(1);
+  };
+
+  const updateCenterBackground = (rgba) => {
+    const { r, g, b, a } = rgba;
+    centerArea.style.background = a < 255 ? `rgba(${r},${g},${b},${a / 255})` : `rgb(${r},${g},${b})`;
+  };
+
+  const renderPaletteSwatches = () => {
+    gallery.innerHTML = '';
+    paletteSlots.forEach((slot, i) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'palette-swatch-wrapper';
+      wrapper.setAttribute('role', 'listitem');
+      wrapper.setAttribute('aria-selected', i === selectedSlotIndex && !editingBackground);
+
+      const div = document.createElement('div');
+      div.className = 'palette-swatch-item';
+      const bg = slot.a < 255 ? `rgba(${slot.r},${slot.g},${slot.b},${slot.a / 255})` : `rgb(${slot.r},${slot.g},${slot.b})`;
+      div.style.background = bg;
+
+      const label = document.createElement('span');
+      label.className = 'palette-swatch-selected-label';
+      label.textContent = '*';
+
+      wrapper.addEventListener('click', () => {
+        editingBackground = false;
+        bgSelectedLabel.classList.add('hidden');
+        selectedSlotIndex = i;
+        applyColor({ ...paletteSlots[i] });
+      });
+
+      wrapper.appendChild(div);
+      if (i === selectedSlotIndex && !editingBackground) wrapper.appendChild(label);
+      gallery.appendChild(wrapper);
+    });
+  };
+
+  const applyColor = (rgba) => {
+    if (updating) return;
+    updating = true;
+    const { r, g, b, a } = rgba;
+
+    setInputsFromRgba(rgba);
+
+    if (editingBackground) {
+      paletteCenterBg = { r, g, b, a };
+      updateCenterBackground(rgba);
+    } else {
+      paletteSlots[selectedSlotIndex] = { r, g, b, a };
+    }
+    renderPaletteSwatches();
+    updating = false;
+  };
+
+  const fromRgba = () => {
+    const r = clamp(parseInt(document.getElementById('palette-r-num').value, 10) || 0, 0, 255);
+    const g = clamp(parseInt(document.getElementById('palette-g-num').value, 10) || 0, 0, 255);
+    const b = clamp(parseInt(document.getElementById('palette-b-num').value, 10) || 0, 0, 255);
+    const a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
+    applyColor({ r, g, b, a });
+  };
+
+  const fromHsl = () => {
+    const h = clamp(parseInt(document.getElementById('palette-hsl-h-num').value, 10) || 0, 0, 360);
+    const s = clamp(parseInt(document.getElementById('palette-hsl-s-num').value, 10) || 0, 0, 100);
+    const l = clamp(parseInt(document.getElementById('palette-hsl-l-num').value, 10) || 0, 0, 100);
+    const rgb = hslToRgb(h, s, l);
+    const a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
+    applyColor({ ...rgb, a });
+  };
+
+  const fromHsv = () => {
+    const h = clamp(parseInt(document.getElementById('palette-hsv-h-num').value, 10) || 0, 0, 360);
+    const s = clamp(parseInt(document.getElementById('palette-hsv-s-num').value, 10) || 0, 0, 100);
+    const v = clamp(parseInt(document.getElementById('palette-hsv-v-num').value, 10) || 0, 0, 100);
+    const rgb = hsvToRgb(h, s, v);
+    const a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
+    applyColor({ ...rgb, a });
+  };
+
+  const fromHex = () => {
+    const hex = document.getElementById('palette-hex').value;
+    const rgb = hexToRgb(hex);
+    if (rgb) {
+      if (hex.replace(/^#/, '').length === 6) {
+        rgb.a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
+      }
+      applyColor(rgb);
+    }
+  };
+
+  ['r', 'g', 'b', 'a'].forEach((ch) => {
+    const el = document.getElementById(`palette-${ch}`);
+    const num = document.getElementById(`palette-${ch}-num`);
+    el?.addEventListener('input', () => { num.value = el.value; fromRgba(); });
+    num?.addEventListener('input', fromRgba);
+  });
+
+  ['h', 's', 'l'].forEach((ch) => {
+    const el = document.getElementById(`palette-hsl-${ch}`);
+    const num = document.getElementById(`palette-hsl-${ch}-num`);
+    el?.addEventListener('input', () => { num.value = el.value; fromHsl(); });
+    num?.addEventListener('input', fromHsl);
+  });
+
+  ['h', 's', 'v'].forEach((ch) => {
+    const el = document.getElementById(`palette-hsv-${ch}`);
+    const num = document.getElementById(`palette-hsv-${ch}-num`);
+    el?.addEventListener('input', () => { num.value = el.value; fromHsv(); });
+    num?.addEventListener('input', fromHsv);
+  });
+
+  document.getElementById('palette-hex')?.addEventListener('input', fromHex);
+  document.getElementById('palette-hex')?.addEventListener('change', fromHex);
+
+  document.getElementById('palette-hex-copy')?.addEventListener('click', () => {
+    const hex = document.getElementById('palette-hex').value;
+    const toCopy = hex ? `#${hex.replace(/^#/, '')}` : '';
+    if (toCopy) navigator.clipboard.writeText(toCopy).catch(() => {});
+  });
+
+  document.getElementById('palette-add-slot')?.addEventListener('click', () => {
+    if (paletteSlots.length >= PALETTE_MAX_SLOTS) return;
+    const r = clamp(parseInt(document.getElementById('palette-r-num').value, 10) || 0, 0, 255);
+    const g = clamp(parseInt(document.getElementById('palette-g-num').value, 10) || 0, 0, 255);
+    const b = clamp(parseInt(document.getElementById('palette-b-num').value, 10) || 0, 0, 255);
+    const a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
+    paletteSlots.push({ r, g, b, a });
+    renderPaletteSwatches();
+  });
+
+  document.getElementById('palette-remove-slot')?.addEventListener('click', () => {
+    if (paletteSlots.length <= 1) return;
+    paletteSlots.splice(selectedSlotIndex, 1);
+    selectedSlotIndex = Math.min(selectedSlotIndex, paletteSlots.length - 1);
+    applyColor({ ...paletteSlots[selectedSlotIndex] });
+  });
+
+  const getAppBgRgba = () => {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    const rgb = hexToRgb(bg);
+    return rgb || { r: 226, g: 238, b: 220, a: 255 };
+  };
+
+  document.getElementById('palette-bg-btn')?.addEventListener('click', () => {
+    if (editingBackground) {
+      paletteCenterBg = getAppBgRgba();
+      updateCenterBackground(paletteCenterBg);
+      editingBackground = false;
+      bgSelectedLabel.classList.add('hidden');
+      selectedSlotIndex = 0;
+      setInputsFromRgba(paletteSlots[0]);
+      renderPaletteSwatches();
+    } else {
+      editingBackground = true;
+      bgSelectedLabel.classList.remove('hidden');
+      setInputsFromRgba(paletteCenterBg);
+      renderPaletteSwatches();
+    }
+  });
+
+  const PALETTE_INFO = {
+    rgba: 'Red, Green, Blue, Alpha. Each 0–255. RGB mixes light; alpha controls opacity (255 = fully opaque).',
+    hsl: 'Hue (0–360°), Saturation (0–100%), Lightness (0–100%). Hue is the color wheel; S/L adjust intensity and brightness.',
+    hsv: 'Hue (0–360°), Saturation (0–100%), Value (0–100%). Similar to HSL but Value is max RGB; often used in color pickers.',
+    hex: 'Hexadecimal notation: #RRGGBB or #RRGGBBAA. Compact format used in CSS and design tools.',
+  };
+
+  const paletteInfoModal = document.getElementById('palette-info-modal');
+  const paletteInfoContent = paletteInfoModal?.querySelector('.palette-info-content');
+
+  document.querySelectorAll('.palette-info-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const group = btn.dataset.group;
+      const groupEl = document.getElementById(`palette-group-${group}`);
+      if (!groupEl || !paletteInfoModal || !paletteInfoContent) return;
+      const rect = groupEl.getBoundingClientRect();
+      paletteInfoContent.textContent = PALETTE_INFO[group] || '';
+      paletteInfoModal.style.top = `${rect.top}px`;
+      paletteInfoModal.style.left = `${rect.left}px`;
+      paletteInfoModal.style.width = `${rect.width}px`;
+      paletteInfoModal.style.minHeight = `${rect.height}px`;
+      paletteInfoModal.classList.remove('hidden');
+      paletteInfoModal.setAttribute('aria-hidden', 'false');
+    });
+  });
+
+  paletteInfoModal?.addEventListener('click', () => {
+    paletteInfoModal.classList.add('hidden');
+    paletteInfoModal.setAttribute('aria-hidden', 'true');
+  });
+
+  updateCenterBackground(paletteCenterBg);
+  applyColor({ r: 128, g: 128, b: 128, a: 255 });
+}
+
+function clamp(n, min, max) {
+  return Math.min(Math.max(n, min), max);
+}
+
 async function init() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('error')) {
@@ -1589,6 +1926,7 @@ async function init() {
     loadActionLog();
     initRoute();
     initSavedLinks();
+    initPalette();
   } else {
     renderLogin();
     document.getElementById('login-btn').onclick = initLogin;

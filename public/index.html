@@ -26,6 +26,9 @@
           <a href="#gmail" class="nav-tab nav-tab-gmail" data-route="gmail" aria-label="Gmail">
             <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
           </a>
+          <a href="#palette" class="nav-tab nav-tab-palette" data-route="palette" aria-label="Palette">
+            <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+          </a>
         </nav>
         <div class="content-column">
           <header class="header">
@@ -141,6 +144,112 @@
       </section>
       </div>
       </div>
+        <div class="module-view hidden" id="module-palette" data-route="palette">
+          <div class="palette-canvas">
+            <div class="palette-inputs">
+              <div class="palette-input-group" id="palette-group-rgba">
+                <div class="palette-group-label">
+                  <span>RGBA</span>
+                  <button type="button" class="palette-info-btn" data-group="rgba" aria-label="RGBA info">(i)</button>
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-r">R</label>
+                  <input type="range" id="palette-r" class="palette-slider" min="0" max="255" value="128" />
+                  <input type="number" id="palette-r-num" class="palette-num" min="0" max="255" value="128" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-g">G</label>
+                  <input type="range" id="palette-g" class="palette-slider" min="0" max="255" value="128" />
+                  <input type="number" id="palette-g-num" class="palette-num" min="0" max="255" value="128" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-b">B</label>
+                  <input type="range" id="palette-b" class="palette-slider" min="0" max="255" value="128" />
+                  <input type="number" id="palette-b-num" class="palette-num" min="0" max="255" value="128" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-a">A</label>
+                  <input type="range" id="palette-a" class="palette-slider" min="0" max="255" value="255" />
+                  <input type="number" id="palette-a-num" class="palette-num" min="0" max="255" value="255" />
+                </div>
+              </div>
+              <div class="palette-input-group" id="palette-group-hsl">
+                <div class="palette-group-label">
+                  <span>HSL</span>
+                  <button type="button" class="palette-info-btn" data-group="hsl" aria-label="HSL info">(i)</button>
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsl-h">H</label>
+                  <input type="range" id="palette-hsl-h" class="palette-slider" min="0" max="360" value="0" />
+                  <input type="number" id="palette-hsl-h-num" class="palette-num" min="0" max="360" value="0" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsl-s">S</label>
+                  <input type="range" id="palette-hsl-s" class="palette-slider" min="0" max="100" value="0" />
+                  <input type="number" id="palette-hsl-s-num" class="palette-num" min="0" max="100" value="0" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsl-l">L</label>
+                  <input type="range" id="palette-hsl-l" class="palette-slider" min="0" max="100" value="50" />
+                  <input type="number" id="palette-hsl-l-num" class="palette-num" min="0" max="100" value="50" />
+                </div>
+              </div>
+              <div class="palette-input-group" id="palette-group-hsv">
+                <div class="palette-group-label">
+                  <span>HSV</span>
+                  <button type="button" class="palette-info-btn" data-group="hsv" aria-label="HSV info">(i)</button>
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsv-h">H</label>
+                  <input type="range" id="palette-hsv-h" class="palette-slider" min="0" max="360" value="0" />
+                  <input type="number" id="palette-hsv-h-num" class="palette-num" min="0" max="360" value="0" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsv-s">S</label>
+                  <input type="range" id="palette-hsv-s" class="palette-slider" min="0" max="100" value="0" />
+                  <input type="number" id="palette-hsv-s-num" class="palette-num" min="0" max="100" value="0" />
+                </div>
+                <div class="palette-channel">
+                  <label for="palette-hsv-v">V</label>
+                  <input type="range" id="palette-hsv-v" class="palette-slider" min="0" max="100" value="50" />
+                  <input type="number" id="palette-hsv-v-num" class="palette-num" min="0" max="100" value="50" />
+                </div>
+              </div>
+              <div class="palette-input-group" id="palette-group-hex">
+                <div class="palette-group-label">
+                  <span>Hex</span>
+                  <button type="button" class="palette-info-btn" data-group="hex" aria-label="Hex info">(i)</button>
+                </div>
+                <div class="palette-hex-row">
+                  <label for="palette-hex">#</label>
+                  <input type="text" id="palette-hex" class="palette-hex" placeholder="808080" maxlength="9" />
+                  <button type="button" id="palette-hex-copy" class="palette-hex-copy" aria-label="Copy hex to clipboard" title="Copy hex to clipboard">⎘</button>
+                </div>
+              </div>
+            </div>
+            <div class="palette-center" id="palette-center-area">
+              <div class="palette-swatch-top">
+                <div class="palette-swatch-top-left">
+                  <button type="button" id="palette-add-slot" class="palette-top-btn" aria-label="Add color to palette" title="Add color to palette">+</button>
+                  <button type="button" id="palette-remove-slot" class="palette-top-btn" aria-label="Remove from palette" title="Remove from palette">−</button>
+                </div>
+                <div class="palette-swatch-top-right">
+                  <span id="palette-bg-selected-label" class="palette-swatch-selected-label hidden">*</span>
+                  <button type="button" id="palette-bg-btn" class="palette-top-btn" aria-label="Edit background" title="Edit background">BG</button>
+                </div>
+              </div>
+              <div id="palette-swatch-gallery" class="palette-swatch-gallery" role="list">
+                <!-- Gallery items rendered by JS -->
+              </div>
+            </div>
+            <div class="palette-save-gallery">
+              <!-- Palette-saving gallery - reserved for saved palettes -->
+            </div>
+          </div>
+          <div id="palette-info-modal" class="palette-info-modal hidden" aria-hidden="true">
+            <div class="palette-info-content"></div>
+          </div>
+        </div>
           </div>
         </div>
       </div>
