@@ -773,6 +773,23 @@ body {
   font-family: inherit;
 }
 
+.edit-link-category-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-link-category-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.edit-link-category-select {
+  flex: 1;
+  min-width: 0;
+}
+
 .add-link-actions {
   display: flex;
   gap: 0.5rem;

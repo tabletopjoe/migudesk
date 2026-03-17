@@ -19,7 +19,7 @@ Gmail inbox management: targeted search, mass delete, and account metadata.
    - Create or select a project
    - Enable the **Gmail API** and **Google Drive API**
    - Create OAuth 2.0 credentials (Desktop app or Web application)
-   - Add `http://localhost:3000/oauth2callback` to authorized redirect URIs (if using Web app)
+   - Add `http://localhost:3001/oauth2callback` to authorized redirect URIs (if using Web app)
    - Download credentials and save as `credentials.json` in this folder
 
 2. **Install dependencies**
@@ -32,7 +32,7 @@ Gmail inbox management: targeted search, mass delete, and account metadata.
    npm start
    ```
 
-4. Open `http://localhost:3000` in your browser, sign in with Google, then search and manage your inbox.
+4. Open `http://localhost:3001` in your browser, sign in with Google, then search and manage your inbox.
 
 ## Search operators
 

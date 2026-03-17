@@ -368,11 +368,21 @@ async function fetchAndMergeSessionInfo() {
   return client;
 }
 
+function formatSessionValue(k, v) {
+  const str = String(v);
+  if (k === 'User agent' && str.length > 50) {
+    const breakAt = str.indexOf(' ', 40);
+    const pos = breakAt > 0 ? breakAt + 1 : 50;
+    return escapeHtml(str.slice(0, pos)) + '<br>' + escapeHtml(str.slice(pos).trim());
+  }
+  return escapeHtml(str);
+}
+
 function renderHomeSession(data) {
   const el = document.getElementById('home-session-list');
   if (!el) return;
   el.innerHTML = Object.entries(data)
-    .map(([k, v]) => `<div class="home-session-entry"><span class="home-session-key">${escapeHtml(k)}:</span> ${escapeHtml(String(v))}</div>`)
+    .map(([k, v]) => `<div class="home-session-entry"><span class="home-session-key">${escapeHtml(k)}:</span> ${formatSessionValue(k, v)}</div>`)
     .join('');
 }
 
@@ -628,11 +638,20 @@ function showEditLinkForm(categoryId, linkId) {
   clearLinkForm(categoryId);
   const formContainer = getLinkFormContainer(categoryId);
   if (!formContainer) return;
+  const categoryOptions = linksData.categories.map((c) =>
+    `<option value="${escapeHtml(c.id)}" ${c.id === categoryId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+  ).join('');
   const form = document.createElement('div');
   form.className = 'add-link-form';
   form.innerHTML = `
     <input type="url" id="edit-link-url" class="add-link-input" placeholder="URL" value="${escapeHtml(link.url)}" />
     <input type="text" id="edit-link-name" class="add-link-input" placeholder="Display name" value="${escapeHtml(link.displayName || link.url)}" />
+    <div class="edit-link-category-row">
+      <label for="edit-link-category" class="edit-link-category-label">Category</label>
+      <select id="edit-link-category" class="add-link-input edit-link-category-select">
+        ${categoryOptions}
+      </select>
+    </div>
     <div class="add-link-actions">
       <button type="button" id="edit-link-submit" class="btn btn-primary btn-form">Update</button>
       <button type="button" id="edit-link-cancel" class="btn btn-secondary btn-form">Cancel</button>
@@ -662,8 +681,10 @@ async function handleDeleteLinkFromForm() {
 async function submitEditLink() {
   const urlInput = document.getElementById('edit-link-url');
   const nameInput = document.getElementById('edit-link-name');
+  const categorySelect = document.getElementById('edit-link-category');
   const url = urlInput?.value?.trim();
   const name = nameInput?.value?.trim();
+  const targetCategoryId = categorySelect?.value;
   if (!url) {
     await modalAlert('URL is required');
     return;
@@ -673,10 +694,19 @@ async function submitEditLink() {
   if (!link) return;
   link.url = url;
   link.displayName = (name || url).trim();
+  if (targetCategoryId && targetCategoryId !== editingCategoryId) {
+    cat.links = cat.links.filter((l) => l.id !== editingLinkId);
+    const targetCat = linksData.categories.find((c) => c.id === targetCategoryId);
+    if (targetCat) {
+      targetCat.links = targetCat.links || [];
+      targetCat.links.push(link);
+    }
+  }
+  const formCategoryId = editingCategoryId;
   editingCategoryId = null;
   editingLinkId = null;
   await saveSavedLinks();
-  cancelEditLink();
+  if (formCategoryId) clearLinkForm(formCategoryId);
   renderSavedLinks();
 }
 
