@@ -391,9 +391,78 @@ async function loadHomeSession() {
   renderHomeSession(data);
 }
 
+let dailySentencesData = [];
+let dailySentencesIndex = 0;
+
+function getDayOfYear() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now - start;
+  const oneDay = 86400000;
+  return Math.floor(diff / oneDay);
+}
+
+const DAILY_SENTENCES_LANGS = [
+  ['es', 'ES'],
+  ['de', 'DE'],
+  ['it', 'IT'],
+  ['fr', 'FR'],
+  ['pt', 'PT'],
+  ['en', 'EN'],
+];
+
+function renderDailySentences() {
+  const el = document.getElementById('home-daily-sentences');
+  if (!el || dailySentencesData.length === 0) return;
+  const len = dailySentencesData.length;
+  const s = dailySentencesData[dailySentencesIndex];
+  const entriesHtml = DAILY_SENTENCES_LANGS
+    .map(([key, label]) => {
+      const text = s[key] || '—';
+      const attr = text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const targetLang = key === 'en' ? 'es' : 'en';
+      const translateUrl = `https://translate.google.com/?sl=${key}&tl=${targetLang}&text=${encodeURIComponent(text)}`;
+      return `<div class="home-daily-sentences-entry" data-sentence="${attr}" role="button" tabindex="0" title="Copy to clipboard"><span class="home-daily-sentences-text"><span class="home-session-key">${label}:</span> ${escapeHtml(text)}</span><a href="${escapeHtml(translateUrl)}" class="home-daily-sentences-translate" target="_blank" rel="noopener noreferrer" aria-label="Translate in Google Translate" title="Translate">↗</a></div>`;
+    })
+    .join('');
+  el.innerHTML = `
+    <div class="home-daily-sentences-nav">
+      <button type="button" class="home-daily-sentences-nav-btn" data-dir="prev" aria-label="Previous sentence" title="Previous sentence">←</button>
+      <button type="button" class="home-daily-sentences-nav-btn" data-dir="next" aria-label="Next sentence" title="Next sentence">→</button>
+    </div>
+    <div class="home-daily-sentences-list">${entriesHtml}</div>`;
+}
+
+async function loadDailySentences() {
+  const el = document.getElementById('home-daily-sentences');
+  if (!el) return;
+  try {
+    const r = await fetch('/data/daily-sentences.json');
+    if (!r.ok) return;
+    const sentences = await r.json();
+    if (!Array.isArray(sentences) || sentences.length === 0) return;
+    dailySentencesData = sentences;
+    dailySentencesIndex = getDayOfYear() % sentences.length;
+    renderDailySentences();
+  } catch {
+    dailySentencesData = [];
+    el.innerHTML = '';
+  }
+}
+
+function goDailySentence(dir) {
+  if (dailySentencesData.length === 0) return;
+  const len = dailySentencesData.length;
+  dailySentencesIndex = dir === 'prev'
+    ? (dailySentencesIndex - 1 + len) % len
+    : (dailySentencesIndex + 1) % len;
+  renderDailySentences();
+}
+
 function updateHomeContent() {
   loadSavedLinks();
   loadHomeSession();
+  loadDailySentences();
   updateHomeDatetime();
 }
 
@@ -486,9 +555,7 @@ function renderSavedLinks() {
     header.addEventListener('click', (e) => {
       if (!e.target.closest('.saved-links-action-btn')) {
         e.stopPropagation();
-        const wasExpanded = catEl.classList.contains('expanded');
-        document.querySelectorAll('#saved-links-categories .saved-links-category').forEach((c) => c.classList.remove('expanded'));
-        if (!wasExpanded) catEl.classList.add('expanded');
+        catEl.classList.toggle('expanded');
       } else {
         const btn = e.target.closest('.saved-links-action-btn');
         if (btn.dataset.action === 'edit-category') handleEditCategory(cat.id);
@@ -2007,5 +2074,27 @@ document.addEventListener('DOMContentLoaded', () => {
       loadSavedQuery(clauses);
     } catch {}
     e.target.selectedIndex = 0;
+  });
+
+  document.getElementById('home-daily-sentences')?.addEventListener('click', (e) => {
+    const navBtn = e.target.closest('.home-daily-sentences-nav-btn');
+    if (navBtn?.dataset.dir) {
+      goDailySentence(navBtn.dataset.dir);
+      return;
+    }
+    if (e.target.closest('.home-daily-sentences-translate')) return;
+    const entry = e.target.closest('.home-daily-sentences-entry');
+    if (!entry) return;
+    const text = entry.dataset.sentence;
+    if (text) navigator.clipboard.writeText(text).catch(() => {});
+  });
+
+  document.getElementById('home-daily-sentences')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const entry = e.target.closest('.home-daily-sentences-entry');
+    if (!entry) return;
+    e.preventDefault();
+    const text = entry.dataset.sentence;
+    if (text) navigator.clipboard.writeText(text).catch(() => {});
   });
 });
