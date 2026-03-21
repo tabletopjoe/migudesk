@@ -39,6 +39,7 @@
                 <a href="https://mail.google.com/mail/#inbox" target="_blank" rel="noopener noreferrer" class="logo-gmail-link" title="Open Gmail">↗</a>
               </span>
               <span class="logo logo-palette" data-route="palette" style="display:none">Palette</span>
+              <button type="button" id="add-category-btn" class="header-add-category" aria-label="Add category" title="Add category">+</button>
             </div>
             <div id="auth-area"></div>
           </header>
@@ -48,10 +49,10 @@
             <div class="home-layout-top">
               <div class="saved-links-area">
                 <div class="saved-links-top-row">
-                  <div id="saved-links-category-list" class="saved-links-category-list hidden"></div>
                   <button type="button" id="saved-links-aux-btn" class="saved-links-top-btn" aria-label="Toggle category list" title="Toggle category list">⋯</button>
-                  <button type="button" id="add-category-btn" class="saved-links-add-category saved-links-top-btn" aria-label="Add category">+</button>
-                  <div id="saved-links-categories" class="saved-links-categories"></div>
+                  <div id="saved-links-categories" class="saved-links-categories">
+                    <div id="saved-links-category-list" class="saved-links-category-list hidden"></div>
+                  </div>
                 </div>
               </div>
               <div class="home-meta">
@@ -63,6 +64,15 @@
           </div>
         </div>
         <div class="module-view hidden" id="module-gmail" data-route="gmail">
+      <div id="gmail-login-card" class="gmail-login-card hidden">
+        <div class="gmail-login-inner">
+          <h2>Sign in with Google</h2>
+          <p>Connect your Gmail to search and manage your inbox.</p>
+          <button type="button" id="gmail-login-btn" class="btn btn-primary btn-lg">Continue with Google</button>
+          <p id="gmail-login-error" class="login-error hidden"></p>
+        </div>
+      </div>
+      <div id="gmail-content" class="gmail-content">
       <div class="tabs-bar">
         <button type="button" class="tab active" data-tab="2">Search</button>
         <button type="button" class="tab" data-tab="1">Account</button>
@@ -145,6 +155,7 @@
         <div class="action-log-label">Action log</div>
         <div id="action-log-search" class="action-log action-log-inline"></div>
       </section>
+      </div>
       </div>
       </div>
         <div class="module-view hidden" id="module-palette" data-route="palette">

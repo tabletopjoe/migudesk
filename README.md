@@ -19,7 +19,7 @@ Gmail inbox management: targeted search, mass delete, and account metadata.
    - Create or select a project
    - Enable the **Gmail API** and **Google Drive API**
    - Create OAuth 2.0 credentials (Desktop app or Web application)
-   - Add `http://localhost:3001/oauth2callback` to authorized redirect URIs (if using Web app)
+   - Add `http://localhost:3001/oauth2callback` to authorized redirect URIs (if using Web app; must match the port the app runs on)
    - Download credentials and save as `credentials.json` in this folder
 
 2. **Install dependencies**

@@ -212,34 +212,24 @@ function modalConfirm(message) {
   });
 }
 
+let pendingGmailAuthError = null;
+
 async function checkAuth() {
   const { authenticated } = await API.get('/auth/status');
   return authenticated;
 }
 
-/** When a Gmail API error may mean session expired, re-check auth and show login if needed. */
+/** When a Gmail API error may mean session expired, re-check auth and show Gmail login if needed. */
 async function handleGmailApiError(e, fallbackMsg) {
   const msg = e.message || fallbackMsg;
   const stillAuth = await checkAuth();
   if (!stillAuth) {
-    renderLogin();
-    document.getElementById('login-btn').onclick = initLogin;
-    const err = document.getElementById('login-error');
-    err.textContent = msg;
-    show(err);
+    renderGmailModuleState(false, msg);
+    const route = getRouteFromHash();
+    if (route !== 'gmail') window.location.hash = 'gmail';
   } else {
     alert(msg);
   }
-}
-
-function renderLogin() {
-  const main = document.getElementById('main');
-  const login = document.getElementById('login-screen');
-  const loading = document.getElementById('loading');
-
-  hide(main);
-  show(login);
-  hide(loading);
 }
 
 function renderApp() {
@@ -252,14 +242,56 @@ function renderApp() {
   hide(loading);
 }
 
+function renderGmailModuleState(authenticated, errorMsg) {
+  const loginCard = document.getElementById('gmail-login-card');
+  const content = document.getElementById('gmail-content');
+  const errEl = document.getElementById('gmail-login-error');
+  const btn = document.getElementById('gmail-login-btn');
+  if (!loginCard || !content) return;
+  if (authenticated) {
+    hide(loginCard);
+    show(content);
+  } else {
+    show(loginCard);
+    hide(content);
+    if (errEl) {
+      errEl.textContent = errorMsg || '';
+      if (errorMsg) show(errEl);
+      else hide(errEl);
+    }
+    if (btn) btn.onclick = initGmailLogin;
+  }
+}
+
+async function initGmailLogin() {
+  const btn = document.getElementById('gmail-login-btn');
+  const err = document.getElementById('gmail-login-error');
+  if (btn) btn.disabled = true;
+  if (err) hide(err);
+  try {
+    const { url } = await API.get('/auth/url');
+    window.location.href = url;
+  } catch (e) {
+    if (err) {
+      err.textContent = e.message || 'Failed to get login URL';
+      show(err);
+    }
+    if (btn) btn.disabled = false;
+  }
+}
+
 function renderAuthArea() {
   const area = document.getElementById('auth-area');
-  area.innerHTML = '<button class="logout">Sign out</button>';
-  area.querySelector('.logout').addEventListener('click', () => {
-    fetch('/auth/logout', { method: 'POST' }).catch(() => {});
-    area.innerHTML = '';
-    renderLogin();
-    document.getElementById('login-btn').onclick = initLogin;
+  area.innerHTML = '';
+  checkAuth().then((authenticated) => {
+    if (authenticated) {
+      area.innerHTML = '<button class="logout">Sign out</button>';
+      area.querySelector('.logout').addEventListener('click', async () => {
+        await fetch('/auth/logout', { method: 'POST' }).catch(() => {});
+        area.innerHTML = '';
+        renderGmailModuleState(false);
+      });
+    }
   });
 }
 
@@ -298,6 +330,11 @@ function renderRoute(route) {
   if (r === 'home') {
     updateHomeContent();
     homeDatetimeInterval = setInterval(updateHomeDatetime, 1000);
+  }
+  if (r === 'gmail') {
+    const err = pendingGmailAuthError;
+    if (err) pendingGmailAuthError = null;
+    checkAuth().then((auth) => renderGmailModuleState(auth, err));
   }
 }
 
@@ -536,7 +573,10 @@ async function saveSavedLinks() {
 function renderSavedLinks() {
   const container = document.getElementById('saved-links-categories');
   if (!container) return;
+  const categoryList = document.getElementById('saved-links-category-list');
+  if (categoryList) categoryList.remove();
   container.innerHTML = '';
+  if (categoryList) container.prepend(categoryList);
   (linksData.categories || []).filter((cat) => visibleCategoryIds.has(cat.id)).forEach((cat) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'saved-links-category-wrapper';
@@ -2006,27 +2046,26 @@ function clamp(n, min, max) {
 }
 
 async function init() {
+  renderApp();
+  initRoute();
+  initSavedLinks();
+  initPalette();
+
   const params = new URLSearchParams(window.location.search);
-  if (params.get('error')) {
-    document.getElementById('login-error').textContent =
-      params.get('error') === 'auth_failed' ? 'Authentication failed. Please try again.' : 'Something went wrong.';
-    show(document.getElementById('login-error'));
-  }
+  const authError = params.get('error') === 'auth_failed' ? 'Authentication failed. Please try again.' : params.get('error') ? 'Something went wrong.' : null;
 
   const authenticated = await checkAuth();
 
   if (authenticated) {
-    renderApp();
     renderAuthArea();
     initQueryBuilder();
     loadSavedQueriesDropdown();
     loadActionLog();
-    initRoute();
-    initSavedLinks();
-    initPalette();
+    renderGmailModuleState(true);
   } else {
-    renderLogin();
-    document.getElementById('login-btn').onclick = initLogin;
+    if (authError) pendingGmailAuthError = authError;
+    renderGmailModuleState(false, authError);
+    renderAuthArea();
   }
 }
 
