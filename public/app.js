@@ -610,6 +610,8 @@ function renderSavedLinks() {
       linkEl.innerHTML = `
         <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.displayName || link.url)}</a>
         <span class="saved-links-link-actions">
+          <button type="button" class="saved-links-action-btn saved-links-sort-btn" data-action="move-up" data-link-id="${escapeHtml(link.id)}" title="Move up">↑</button>
+          <button type="button" class="saved-links-action-btn saved-links-sort-btn" data-action="move-down" data-link-id="${escapeHtml(link.id)}" title="Move down">↓</button>
           <button type="button" class="saved-links-action-btn edit" data-link-id="${escapeHtml(link.id)}" title="Edit">✎</button>
         </span>
       `;
@@ -624,7 +626,13 @@ function renderSavedLinks() {
         const btn = e.target.closest('.saved-links-action-btn');
         if (!btn) return;
         e.preventDefault();
-        handleEditLink(cat.id, btn.dataset.linkId);
+        if (btn.dataset.action === 'move-up') {
+          moveLinkUp(cat.id, btn.dataset.linkId);
+        } else if (btn.dataset.action === 'move-down') {
+          moveLinkDown(cat.id, btn.dataset.linkId);
+        } else {
+          handleEditLink(cat.id, btn.dataset.linkId);
+        }
       });
       if (multiOpenCategoryId === cat.id && multiOpenSelectedIds.has(link.id)) {
         linkEl.classList.add('multi-open-selected');
@@ -727,8 +735,18 @@ function showAddLinkForm(categoryId) {
     </div>
   `;
   formContainer.appendChild(form);
-  form.querySelector('#add-link-submit').addEventListener('click', () => submitAddLink());
+  const urlInput = form.querySelector('#add-link-url');
+  const nameInput = form.querySelector('#add-link-name');
+  const submitBtn = form.querySelector('#add-link-submit');
+  submitBtn.addEventListener('click', () => submitAddLink());
   form.querySelector('#add-link-cancel').addEventListener('click', () => cancelAddLink());
+  nameInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && urlInput?.value?.trim() && nameInput?.value?.trim()) {
+      e.preventDefault();
+      submitBtn.click();
+    }
+  });
+  urlInput?.focus();
 }
 
 function cancelAddLink() {
@@ -900,6 +918,24 @@ async function handleDeleteCategory(categoryId) {
   linksData.categories = linksData.categories.filter((c) => c.id !== categoryId);
   await saveSavedLinks();
   renderSavedLinks();
+}
+
+function moveLinkUp(categoryId, linkId) {
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  if (!cat?.links) return;
+  const idx = cat.links.findIndex((l) => l.id === linkId);
+  if (idx <= 0) return;
+  [cat.links[idx - 1], cat.links[idx]] = [cat.links[idx], cat.links[idx - 1]];
+  saveSavedLinks().then(() => renderSavedLinks());
+}
+
+function moveLinkDown(categoryId, linkId) {
+  const cat = linksData.categories.find((c) => c.id === categoryId);
+  if (!cat?.links) return;
+  const idx = cat.links.findIndex((l) => l.id === linkId);
+  if (idx < 0 || idx >= cat.links.length - 1) return;
+  [cat.links[idx], cat.links[idx + 1]] = [cat.links[idx + 1], cat.links[idx]];
+  saveSavedLinks().then(() => renderSavedLinks());
 }
 
 function handleEditLink(categoryId, linkId) {
