@@ -1843,16 +1843,33 @@ function hexToRgb(hex) {
   return null;
 }
 
-const PALETTE_MAX_SLOTS = 7;
+const PALETTE_MAX_SLOTS = 10;
+
+const THEME_SLOT_META = [
+  { key: 'bg', label: 'Background', tooltip: 'Page background; the main canvas color.' },
+  { key: 'surface', label: 'Surface', tooltip: 'Cards, panels, and elevated surfaces.' },
+  { key: 'border', label: 'Border', tooltip: 'Borders and dividers between elements.' },
+  { key: 'text', label: 'Text', tooltip: 'Primary body text.' },
+  { key: 'text-muted', label: 'Text muted', tooltip: 'Secondary text, captions, and labels.' },
+  { key: 'accent', label: 'Accent', tooltip: 'Primary accent for links, buttons, and emphasis.' },
+  { key: 'accent-hover', label: 'Accent hover', tooltip: 'Hover state for accent elements.' },
+  { key: 'danger', label: 'Danger', tooltip: 'Destructive actions like delete.' },
+  { key: 'danger-hover', label: 'Danger hover', tooltip: 'Hover state for danger elements.' },
+  { key: 'success', label: 'Success', tooltip: 'Success states and confirmations.' },
+];
+
+const DEFAULT_THEME_HEX = [
+  '#e2eedc', '#ffffff', '#9eb5a0', '#1a2420', '#4a5f56',
+  '#4f7a5a', '#5e9269', '#c53030', '#e53e3e', '#2f855a',
+];
 
 function initPalette() {
   const gallery = document.getElementById('palette-swatch-gallery');
-  const centerArea = document.getElementById('palette-center-area');
-  const bgSelectedLabel = document.getElementById('palette-bg-selected-label');
-  let paletteSlots = [{ r: 128, g: 128, b: 128, a: 255 }];
-  let paletteCenterBg = { r: 255, g: 255, b: 255, a: 255 };
+  let paletteSlots = DEFAULT_THEME_HEX.map((hex) => {
+    const rgb = hexToRgb(hex);
+    return rgb ? { ...rgb } : { r: 128, g: 128, b: 128, a: 255 };
+  });
   let selectedSlotIndex = 0;
-  let editingBackground = false;
   let updating = false;
 
   const setInputsFromRgba = (rgba) => {
@@ -1882,37 +1899,35 @@ function initPalette() {
     document.getElementById('palette-hex').value = rgbToHex(r, g, b, a).slice(1);
   };
 
-  const updateCenterBackground = (rgba) => {
-    const { r, g, b, a } = rgba;
-    centerArea.style.background = a < 255 ? `rgba(${r},${g},${b},${a / 255})` : `rgb(${r},${g},${b})`;
-  };
-
   const renderPaletteSwatches = () => {
     gallery.innerHTML = '';
     paletteSlots.forEach((slot, i) => {
+      const meta = THEME_SLOT_META[i] || { label: `Slot ${i + 1}`, tooltip: '' };
       const wrapper = document.createElement('div');
       wrapper.className = 'palette-swatch-wrapper';
       wrapper.setAttribute('role', 'listitem');
-      wrapper.setAttribute('aria-selected', i === selectedSlotIndex && !editingBackground);
+      wrapper.setAttribute('aria-selected', i === selectedSlotIndex);
 
       const div = document.createElement('div');
       div.className = 'palette-swatch-item';
+      div.setAttribute('title', meta.tooltip);
       const bg = slot.a < 255 ? `rgba(${slot.r},${slot.g},${slot.b},${slot.a / 255})` : `rgb(${slot.r},${slot.g},${slot.b})`;
       div.style.background = bg;
 
+      const labelRow = document.createElement('div');
+      labelRow.className = 'palette-swatch-label-row';
       const label = document.createElement('span');
-      label.className = 'palette-swatch-selected-label';
-      label.textContent = '*';
+      label.className = 'palette-swatch-semantic-label';
+      label.textContent = (i === selectedSlotIndex ? '* ' : '') + meta.label;
+      labelRow.appendChild(label);
 
       wrapper.addEventListener('click', () => {
-        editingBackground = false;
-        bgSelectedLabel.classList.add('hidden');
         selectedSlotIndex = i;
         applyColor({ ...paletteSlots[i] });
       });
 
       wrapper.appendChild(div);
-      if (i === selectedSlotIndex && !editingBackground) wrapper.appendChild(label);
+      wrapper.appendChild(labelRow);
       gallery.appendChild(wrapper);
     });
   };
@@ -1923,13 +1938,7 @@ function initPalette() {
     const { r, g, b, a } = rgba;
 
     setInputsFromRgba(rgba);
-
-    if (editingBackground) {
-      paletteCenterBg = { r, g, b, a };
-      updateCenterBackground(rgba);
-    } else {
-      paletteSlots[selectedSlotIndex] = { r, g, b, a };
-    }
+    paletteSlots[selectedSlotIndex] = { r, g, b, a };
     renderPaletteSwatches();
     updating = false;
   };
@@ -2001,45 +2010,14 @@ function initPalette() {
     if (toCopy) navigator.clipboard.writeText(toCopy).catch(() => {});
   });
 
-  document.getElementById('palette-add-slot')?.addEventListener('click', () => {
-    if (paletteSlots.length >= PALETTE_MAX_SLOTS) return;
-    const r = clamp(parseInt(document.getElementById('palette-r-num').value, 10) || 0, 0, 255);
-    const g = clamp(parseInt(document.getElementById('palette-g-num').value, 10) || 0, 0, 255);
-    const b = clamp(parseInt(document.getElementById('palette-b-num').value, 10) || 0, 0, 255);
-    const a = clamp(parseInt(document.getElementById('palette-a-num').value, 10) || 255, 0, 255);
-    paletteSlots.push({ r, g, b, a });
-    renderPaletteSwatches();
-  });
-
-  document.getElementById('palette-remove-slot')?.addEventListener('click', () => {
-    if (paletteSlots.length <= 1) return;
-    paletteSlots.splice(selectedSlotIndex, 1);
-    selectedSlotIndex = Math.min(selectedSlotIndex, paletteSlots.length - 1);
-    applyColor({ ...paletteSlots[selectedSlotIndex] });
-  });
-
-  const getAppBgRgba = () => {
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-    const rgb = hexToRgb(bg);
-    return rgb || { r: 226, g: 238, b: 220, a: 255 };
-  };
-
-  document.getElementById('palette-bg-btn')?.addEventListener('click', () => {
-    if (editingBackground) {
-      paletteCenterBg = getAppBgRgba();
-      updateCenterBackground(paletteCenterBg);
-      editingBackground = false;
-      bgSelectedLabel.classList.add('hidden');
-      selectedSlotIndex = 0;
-      setInputsFromRgba(paletteSlots[0]);
-      renderPaletteSwatches();
-    } else {
-      editingBackground = true;
-      bgSelectedLabel.classList.remove('hidden');
-      setInputsFromRgba(paletteCenterBg);
-      renderPaletteSwatches();
+  const ensureTenSlots = (slots) => {
+    const pad = { r: 128, g: 128, b: 128, a: 255 };
+    const result = [...(slots || [])];
+    while (result.length < PALETTE_MAX_SLOTS) {
+      result.push({ ...pad });
     }
-  });
+    return result.slice(0, PALETTE_MAX_SLOTS);
+  };
 
   const PALETTE_INFO = {
     rgba: 'Red, Green, Blue, Alpha. Each 0–255. RGB mixes light; alpha controls opacity (255 = fully opaque).',
@@ -2073,8 +2051,114 @@ function initPalette() {
     paletteInfoModal.setAttribute('aria-hidden', 'true');
   });
 
-  updateCenterBackground(paletteCenterBg);
-  applyColor({ r: 128, g: 128, b: 128, a: 255 });
+  // --- Saved themes ---
+  let themesData = [];
+  let selectedThemeId = null;
+
+  const applyThemeToApp = (theme) => {
+    const slots = theme.slots || [];
+    THEME_SLOT_META.forEach((meta, i) => {
+      const slot = slots[i];
+      if (!slot) return;
+      const hex = rgbToHex(slot.r, slot.g, slot.b, slot.a);
+      document.documentElement.style.setProperty(`--${meta.key}`, hex);
+    });
+  };
+
+  const renderSavedThemes = () => {
+    const list = document.getElementById('palette-saved-themes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    themesData.forEach((theme) => {
+      const item = document.createElement('div');
+      item.className = 'palette-saved-theme-item';
+      if (theme.id === selectedThemeId) item.classList.add('selected');
+      item.setAttribute('role', 'listitem');
+      item.dataset.themeId = theme.id;
+
+      const preview = document.createElement('div');
+      preview.className = 'palette-saved-theme-preview';
+      (theme.slots || []).slice(0, 5).forEach((slot) => {
+        const swatch = document.createElement('div');
+        swatch.className = 'palette-saved-theme-preview-swatch';
+        const bg = slot.a < 255
+          ? `rgba(${slot.r},${slot.g},${slot.b},${slot.a / 255})`
+          : `rgb(${slot.r},${slot.g},${slot.b})`;
+        swatch.style.background = bg;
+        preview.appendChild(swatch);
+      });
+      item.appendChild(preview);
+
+      const name = document.createElement('span');
+      name.className = 'palette-saved-theme-name';
+      name.textContent = theme.name || 'Unnamed';
+      item.appendChild(name);
+
+      if (theme.id === selectedThemeId) {
+        const applyBtn = document.createElement('button');
+        applyBtn.type = 'button';
+        applyBtn.className = 'palette-theme-apply-btn';
+        applyBtn.textContent = 'Apply';
+        applyBtn.title = 'Apply theme to megaDesk';
+        applyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyThemeToApp(theme);
+        });
+        item.appendChild(applyBtn);
+      }
+
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.palette-theme-apply-btn')) return;
+        if (!theme.slots?.length) return;
+        selectedThemeId = theme.id;
+        paletteSlots = ensureTenSlots(theme.slots).map((s) => ({ ...s }));
+        selectedSlotIndex = 0;
+        applyColor({ ...paletteSlots[0] });
+        renderSavedThemes();
+      });
+
+      list.appendChild(item);
+    });
+  };
+
+  document.getElementById('palette-save-theme-btn')?.addEventListener('click', async () => {
+    const name = await modalPrompt('Theme name:');
+    if (!name?.trim()) return;
+    const trimmed = name.trim();
+    const exists = themesData.some((t) => t.name.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      await modalAlert('Theme name already exists');
+      return;
+    }
+    const newTheme = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      name: trimmed,
+      slots: ensureTenSlots(paletteSlots).map((s) => ({ r: s.r, g: s.g, b: s.b, a: s.a })),
+      bg: { ...paletteSlots[1] },
+    };
+    themesData.push(newTheme);
+    try {
+      const saved = await API.put('/api/themes', { themes: themesData });
+      themesData = saved.themes || themesData;
+    } catch (e) {
+      themesData.pop();
+      await modalAlert(e?.message || 'Failed to save theme');
+      return;
+    }
+    renderSavedThemes();
+  });
+
+  (async () => {
+    try {
+      const data = await API.get('/api/themes');
+      themesData = data.themes || [];
+    } catch {
+      themesData = [];
+    }
+    renderSavedThemes();
+  })();
+
+  applyColor({ ...paletteSlots[0] });
 }
 
 function clamp(n, min, max) {

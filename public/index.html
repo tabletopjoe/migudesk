@@ -242,22 +242,17 @@
               </div>
             </div>
             <div class="palette-center" id="palette-center-area">
-              <div class="palette-swatch-top">
-                <div class="palette-swatch-top-left">
-                  <button type="button" id="palette-add-slot" class="palette-top-btn" aria-label="Add color to palette" title="Add color to palette">+</button>
-                  <button type="button" id="palette-remove-slot" class="palette-top-btn" aria-label="Remove from palette" title="Remove from palette">−</button>
-                </div>
-                <div class="palette-swatch-top-right">
-                  <span id="palette-bg-selected-label" class="palette-swatch-selected-label hidden">*</span>
-                  <button type="button" id="palette-bg-btn" class="palette-top-btn" aria-label="Edit background" title="Edit background">BG</button>
-                </div>
-              </div>
               <div id="palette-swatch-gallery" class="palette-swatch-gallery" role="list">
                 <!-- Gallery items rendered by JS -->
               </div>
             </div>
             <div class="palette-save-gallery">
-              <!-- Palette-saving gallery - reserved for saved palettes -->
+              <div class="palette-saved-themes-header">
+                <button type="button" id="palette-save-theme-btn" class="btn btn-primary btn-form" aria-label="Save current theme" title="Save current theme">Save theme</button>
+              </div>
+              <div id="palette-saved-themes-list" class="palette-saved-themes-list" role="list">
+                <!-- Saved themes rendered by JS -->
+              </div>
             </div>
           </div>
           <div id="palette-info-modal" class="palette-info-modal hidden" aria-hidden="true">

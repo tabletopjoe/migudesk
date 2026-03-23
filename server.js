@@ -29,6 +29,7 @@ import { getSavedQueries, addSavedQuery } from './lib/queries.js';
 import { getActionLog, appendToActionLog } from './lib/actionLog.js';
 import { getAccountData } from './lib/account.js';
 import { getLinks, saveLinksData } from './lib/links.js';
+import { getThemes, saveThemesData } from './lib/themes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -128,6 +129,31 @@ app.put('/api/links', (req, res) => {
   }
   try {
     const saved = saveLinksData({ categories });
+    res.json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Saved palette themes
+app.get('/api/themes', (_req, res) => {
+  try {
+    const data = getThemes();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/themes', (req, res) => {
+  const { themes } = req.body;
+  if (!Array.isArray(themes)) {
+    return res.status(400).json({ error: 'themes array is required' });
+  }
+  try {
+    const saved = saveThemesData({ themes });
     res.json(saved);
   } catch (err) {
     console.error(err);
