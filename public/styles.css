@@ -258,8 +258,107 @@ body {
 }
 
 /* Palette module - inputs left, swatch center */
-#app[data-route="palette"] .main-content {
+#app[data-route="palette"] .main-content,
+#app[data-route="translate"] .main-content {
   padding-left: 0;
+}
+
+.translate-module {
+  padding: 1rem 1.5rem;
+  min-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.translate-workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  gap: 0.75rem;
+}
+
+.translate-workspace-input-row {
+  --translate-control-height: 2.75rem;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.translate-workspace-input-row .translate-daily-sentences-nav--toolbar {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.25rem;
+  align-self: stretch;
+}
+
+.translate-workspace-input-row .translate-daily-sentences-nav-btn {
+  width: auto;
+  min-width: 2.5rem;
+  height: var(--translate-control-height);
+  min-height: var(--translate-control-height);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.65rem;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: rgba(79, 122, 90, 0.15);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.translate-workspace-input-row .translate-daily-sentences-nav-btn:hover {
+  color: var(--accent);
+  background: rgba(79, 122, 90, 0.25);
+}
+
+.translate-source-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: none;
+  height: var(--translate-control-height);
+  min-height: var(--translate-control-height);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.translate-workspace-input-row #translate-run-btn {
+  height: var(--translate-control-height);
+  min-height: var(--translate-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.translate-workspace-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--danger);
+  text-align: left;
 }
 
 #module-palette {
@@ -596,26 +695,31 @@ body {
   overflow-y: auto;
 }
 
-.home-daily-sentences {
+.translate-daily-sentences {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 0.83em;
+  font-size: 1.66em;
   color: var(--text-muted);
   text-align: left;
-  margin-top: auto;
   flex-shrink: 0;
 }
 
-.home-daily-sentences-nav {
+#translate-daily-sentences.translate-daily-sentences {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+
+.translate-daily-sentences-nav {
   display: flex;
   gap: 0.25rem;
   margin-bottom: 0.15rem;
 }
 
-.home-daily-sentences-nav-btn {
-  width: 1.5rem;
-  height: 1.25rem;
+/* Nav buttons: toolbar row uses .translate-workspace-input-row … rules for size */
+.translate-daily-sentences-nav-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,12 +732,12 @@ body {
   cursor: pointer;
 }
 
-.home-daily-sentences-nav-btn:hover {
+.translate-daily-sentences-nav-btn:hover {
   color: var(--accent);
   background: rgba(79, 122, 90, 0.25);
 }
 
-.home-daily-sentences-entry {
+.translate-daily-sentences-entry {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -641,17 +745,17 @@ body {
   cursor: pointer;
 }
 
-.home-daily-sentences-entry:hover {
+.translate-daily-sentences-entry:hover {
   color: var(--text);
 }
 
-.home-daily-sentences-text {
+.translate-daily-sentences-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.home-daily-sentences-translate {
+.translate-daily-sentences-translate {
   flex-shrink: 0;
   color: var(--text-muted);
   text-decoration: none;
@@ -659,7 +763,7 @@ body {
   opacity: 0.7;
 }
 
-.home-daily-sentences-translate:hover {
+.translate-daily-sentences-translate:hover {
   color: var(--accent);
   opacity: 1;
 }

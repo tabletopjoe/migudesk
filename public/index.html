@@ -29,6 +29,9 @@
           <a href="#palette" class="nav-tab nav-tab-palette" data-route="palette" aria-label="Palette">
             <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
           </a>
+          <a href="#translate" class="nav-tab nav-tab-translate" data-route="translate" aria-label="Language and translation">
+            <svg class="nav-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </a>
         </nav>
         <div class="content-column">
           <header class="header">
@@ -39,6 +42,7 @@
                 <a href="https://mail.google.com/mail/#inbox" target="_blank" rel="noopener noreferrer" class="logo-gmail-link" title="Open Gmail">↗</a>
               </span>
               <span class="logo logo-palette" data-route="palette" style="display:none">Palette</span>
+              <span class="logo logo-translate" data-route="translate" style="display:none">Translate</span>
               <button type="button" id="add-category-btn" class="header-add-category" aria-label="Add category" title="Add category">+</button>
             </div>
             <div id="auth-area"></div>
@@ -60,7 +64,6 @@
                 <div id="home-session-list" class="home-session-list"></div>
               </div>
             </div>
-            <div id="home-daily-sentences" class="home-daily-sentences" aria-label="Daily sentence in four languages"></div>
           </div>
         </div>
         <div class="module-view hidden" id="module-gmail" data-route="gmail">
@@ -259,6 +262,22 @@
             <div class="palette-info-content"></div>
           </div>
         </div>
+        <div class="module-view hidden" id="module-translate" data-route="translate">
+          <div class="translate-module">
+            <div class="translate-workspace">
+              <div class="translate-workspace-input-row">
+                <div class="translate-daily-sentences-nav translate-daily-sentences-nav--toolbar" id="translate-daily-sentences-nav" aria-label="Previous and next daily sentence">
+                  <button type="button" class="translate-daily-sentences-nav-btn" data-dir="prev" aria-label="Previous sentence" title="Previous sentence">←</button>
+                  <button type="button" class="translate-daily-sentences-nav-btn" data-dir="next" aria-label="Next sentence" title="Next sentence">→</button>
+                </div>
+                <input type="text" id="translate-source-input" class="translate-source-input" placeholder="Enter English text…" maxlength="500" autocomplete="off" aria-label="English text to translate" />
+                <button type="button" id="translate-run-btn" class="btn btn-primary btn-form">Translate</button>
+              </div>
+              <p id="translate-workspace-error" class="translate-workspace-error hidden" role="alert"></p>
+            </div>
+            <div id="translate-daily-sentences" class="translate-daily-sentences" aria-label="Six language lines" aria-live="polite"></div>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -284,6 +303,6 @@
       </div>
     </div>
   </div>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

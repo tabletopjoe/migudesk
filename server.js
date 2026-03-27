@@ -30,6 +30,7 @@ import { getActionLog, appendToActionLog } from './lib/actionLog.js';
 import { getAccountData } from './lib/account.js';
 import { getLinks, saveLinksData } from './lib/links.js';
 import { getThemes, saveThemesData } from './lib/themes.js';
+import { translateEnglishToAll } from './lib/translate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -158,6 +159,22 @@ app.put('/api/themes', (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });
+  }
+});
+
+// English → ES, IT, FR, PT, DE, EN (EN echoed) via MyMemory public API
+app.get('/api/translate', (_req, res) => {
+  res.json({ ok: true, hint: 'POST JSON body: { "text": "English text" }' });
+});
+app.post('/api/translate', async (req, res) => {
+  try {
+    const translations = await translateEnglishToAll(req.body?.text);
+    res.json({ translations });
+  } catch (err) {
+    console.error(err);
+    const msg = err?.message || 'Translation failed';
+    const status = msg.includes('required') || msg.includes('characters') ? 400 : 502;
+    res.status(status).json({ error: msg });
   }
 });
 

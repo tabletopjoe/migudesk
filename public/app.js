@@ -305,13 +305,14 @@ function getRouteFromHash() {
   const hash = (window.location.hash || '#home').slice(1);
   if (hash === 'gmail') return 'gmail';
   if (hash === 'palette') return 'palette';
+  if (hash === 'translate') return 'translate';
   return 'home';
 }
 
 let homeDatetimeInterval = null;
 
 function renderRoute(route) {
-  const r = route === 'gmail' ? 'gmail' : route === 'palette' ? 'palette' : 'home';
+  const r = route === 'gmail' ? 'gmail' : route === 'palette' ? 'palette' : route === 'translate' ? 'translate' : 'home';
   const app = document.getElementById('app');
   app.dataset.route = r;
   document.querySelectorAll('.nav-tab').forEach((a) => {
@@ -335,6 +336,9 @@ function renderRoute(route) {
     const err = pendingGmailAuthError;
     if (err) pendingGmailAuthError = null;
     checkAuth().then((auth) => renderGmailModuleState(auth, err));
+  }
+  if (r === 'translate') {
+    loadDailySentences();
   }
 }
 
@@ -441,17 +445,16 @@ function getDayOfYear() {
 
 const DAILY_SENTENCES_LANGS = [
   ['es', 'ES'],
-  ['de', 'DE'],
   ['it', 'IT'],
   ['fr', 'FR'],
   ['pt', 'PT'],
+  ['de', 'DE'],
   ['en', 'EN'],
 ];
 
 function renderDailySentences() {
-  const el = document.getElementById('home-daily-sentences');
+  const el = document.getElementById('translate-daily-sentences');
   if (!el || dailySentencesData.length === 0) return;
-  const len = dailySentencesData.length;
   const s = dailySentencesData[dailySentencesIndex];
   const entriesHtml = DAILY_SENTENCES_LANGS
     .map(([key, label]) => {
@@ -459,19 +462,14 @@ function renderDailySentences() {
       const attr = text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const targetLang = key === 'en' ? 'es' : 'en';
       const translateUrl = `https://translate.google.com/?sl=${key}&tl=${targetLang}&text=${encodeURIComponent(text)}`;
-      return `<div class="home-daily-sentences-entry" data-sentence="${attr}" role="button" tabindex="0" title="Copy to clipboard"><span class="home-daily-sentences-text"><span class="home-session-key">${label}:</span> ${escapeHtml(text)}</span><a href="${escapeHtml(translateUrl)}" class="home-daily-sentences-translate" target="_blank" rel="noopener noreferrer" aria-label="Translate in Google Translate" title="Translate">↗</a></div>`;
+      return `<div class="translate-daily-sentences-entry" data-sentence="${attr}" role="button" tabindex="0" title="Copy to clipboard"><span class="translate-daily-sentences-text"><span class="home-session-key">${label}:</span> ${escapeHtml(text)}</span><a href="${escapeHtml(translateUrl)}" class="translate-daily-sentences-translate" target="_blank" rel="noopener noreferrer" aria-label="Translate in Google Translate" title="Translate">↗</a></div>`;
     })
     .join('');
-  el.innerHTML = `
-    <div class="home-daily-sentences-nav">
-      <button type="button" class="home-daily-sentences-nav-btn" data-dir="prev" aria-label="Previous sentence" title="Previous sentence">←</button>
-      <button type="button" class="home-daily-sentences-nav-btn" data-dir="next" aria-label="Next sentence" title="Next sentence">→</button>
-    </div>
-    <div class="home-daily-sentences-list">${entriesHtml}</div>`;
+  el.innerHTML = `<div class="translate-daily-sentences-list">${entriesHtml}</div>`;
 }
 
 async function loadDailySentences() {
-  const el = document.getElementById('home-daily-sentences');
+  const el = document.getElementById('translate-daily-sentences');
   if (!el) return;
   try {
     const r = await fetch('/data/daily-sentences.json');
@@ -496,10 +494,68 @@ function goDailySentence(dir) {
   renderDailySentences();
 }
 
+function renderTranslateWorkspaceResults(translations) {
+  const el = document.getElementById('translate-daily-sentences');
+  if (!el) return;
+  const rows = DAILY_SENTENCES_LANGS.map(([key, label]) => {
+    const text = translations[key] ?? '—';
+    const attr = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const targetLang = key === 'en' ? 'es' : 'en';
+    const translateUrl = `https://translate.google.com/?sl=${key}&tl=${targetLang}&text=${encodeURIComponent(text)}`;
+    return `<div class="translate-daily-sentences-entry" data-sentence="${attr}" role="button" tabindex="0" title="Copy to clipboard"><span class="translate-daily-sentences-text"><span class="home-session-key">${label}:</span> ${escapeHtml(String(text))}</span><a href="${escapeHtml(translateUrl)}" class="translate-daily-sentences-translate" target="_blank" rel="noopener noreferrer" aria-label="Translate in Google Translate" title="Translate">↗</a></div>`;
+  }).join('');
+  el.innerHTML = `<div class="translate-daily-sentences-list">${rows}</div>`;
+}
+
+function initTranslateWorkspace() {
+  const input = document.getElementById('translate-source-input');
+  const btn = document.getElementById('translate-run-btn');
+  const errEl = document.getElementById('translate-workspace-error');
+  if (!input || !btn) return;
+
+  const showError = (msg) => {
+    if (!errEl) return;
+    if (msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    } else {
+      errEl.textContent = '';
+      errEl.classList.add('hidden');
+    }
+  };
+
+  const run = async () => {
+    const text = input.value.trim();
+    showError('');
+    if (!text) return;
+    btn.disabled = true;
+    try {
+      const { translations } = await API.post('/api/translate', { text });
+      renderTranslateWorkspaceResults(translations);
+    } catch (e) {
+      const raw = e?.message || '';
+      const msg = /not found|^404$/i.test(raw) || raw === 'Not Found'
+        ? 'Translation API not available. Restart the megaDesk server (node server.js) so it loads the latest routes, and open the app from that server (e.g. http://localhost:3001).'
+        : (raw || 'Translation failed');
+      showError(msg);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  btn.addEventListener('click', () => run());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') run();
+  });
+}
+
 function updateHomeContent() {
   loadSavedLinks();
   loadHomeSession();
-  loadDailySentences();
   updateHomeDatetime();
 }
 
@@ -2170,6 +2226,7 @@ async function init() {
   initRoute();
   initSavedLinks();
   initPalette();
+  initTranslateWorkspace();
 
   const params = new URLSearchParams(window.location.search);
   const authError = params.get('error') === 'auth_failed' ? 'Authentication failed. Please try again.' : params.get('error') ? 'Something went wrong.' : null;
@@ -2235,22 +2292,23 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.selectedIndex = 0;
   });
 
-  document.getElementById('home-daily-sentences')?.addEventListener('click', (e) => {
-    const navBtn = e.target.closest('.home-daily-sentences-nav-btn');
+  document.getElementById('module-translate')?.addEventListener('click', (e) => {
+    const navBtn = e.target.closest('.translate-daily-sentences-nav-btn');
     if (navBtn?.dataset.dir) {
       goDailySentence(navBtn.dataset.dir);
       return;
     }
-    if (e.target.closest('.home-daily-sentences-translate')) return;
-    const entry = e.target.closest('.home-daily-sentences-entry');
+    if (!e.target.closest('#translate-daily-sentences')) return;
+    if (e.target.closest('.translate-daily-sentences-translate')) return;
+    const entry = e.target.closest('.translate-daily-sentences-entry');
     if (!entry) return;
     const text = entry.dataset.sentence;
     if (text) navigator.clipboard.writeText(text).catch(() => {});
   });
 
-  document.getElementById('home-daily-sentences')?.addEventListener('keydown', (e) => {
+  document.getElementById('translate-daily-sentences')?.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const entry = e.target.closest('.home-daily-sentences-entry');
+    const entry = e.target.closest('.translate-daily-sentences-entry');
     if (!entry) return;
     e.preventDefault();
     const text = entry.dataset.sentence;
