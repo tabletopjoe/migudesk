@@ -1919,6 +1919,8 @@ const DEFAULT_THEME_HEX = [
   '#4f7a5a', '#5e9269', '#c53030', '#e53e3e', '#2f855a',
 ];
 
+const SELECTED_THEME_STORAGE_KEY = 'megaDesk.selectedThemeId';
+
 function initPalette() {
   const gallery = document.getElementById('palette-swatch-gallery');
   let paletteSlots = DEFAULT_THEME_HEX.map((hex) => {
@@ -1974,7 +1976,7 @@ function initPalette() {
       labelRow.className = 'palette-swatch-label-row';
       const label = document.createElement('span');
       label.className = 'palette-swatch-semantic-label';
-      label.textContent = (i === selectedSlotIndex ? '* ' : '') + meta.label;
+      label.textContent = meta.label;
       labelRow.appendChild(label);
 
       wrapper.addEventListener('click', () => {
@@ -2111,6 +2113,18 @@ function initPalette() {
   let themesData = [];
   let selectedThemeId = null;
 
+  const persistSelectedThemeId = () => {
+    try {
+      if (selectedThemeId) {
+        localStorage.setItem(SELECTED_THEME_STORAGE_KEY, selectedThemeId);
+      } else {
+        localStorage.removeItem(SELECTED_THEME_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
+  };
+
   const applyThemeToApp = (theme) => {
     const slots = theme.slots || [];
     THEME_SLOT_META.forEach((meta, i) => {
@@ -2119,6 +2133,36 @@ function initPalette() {
       const hex = rgbToHex(slot.r, slot.g, slot.b, slot.a);
       document.documentElement.style.setProperty(`--${meta.key}`, hex);
     });
+  };
+
+  const defaultPaletteSlots = () =>
+    DEFAULT_THEME_HEX.map((hex) => {
+      const rgb = hexToRgb(hex);
+      return rgb ? { ...rgb } : { r: 128, g: 128, b: 128, a: 255 };
+    });
+
+  const clearPaletteSelection = () => {
+    selectedThemeId = null;
+    paletteSlots = defaultPaletteSlots();
+    selectedSlotIndex = 0;
+    applyColor({ ...paletteSlots[0] });
+    applyThemeToApp({ slots: ensureTenSlots(paletteSlots) });
+    persistSelectedThemeId();
+    renderSavedThemes();
+  };
+
+  const updateSaveThemeButtonLabel = () => {
+    const btn = document.getElementById('palette-save-theme-btn');
+    if (!btn) return;
+    if (selectedThemeId) {
+      btn.textContent = 'Save updates';
+      btn.setAttribute('aria-label', 'Save updates to selected theme');
+      btn.title = 'Save updates to selected theme';
+    } else {
+      btn.textContent = 'Save theme';
+      btn.setAttribute('aria-label', 'Save current theme');
+      btn.title = 'Save current theme';
+    }
   };
 
   const renderSavedThemes = () => {
@@ -2170,14 +2214,48 @@ function initPalette() {
         paletteSlots = ensureTenSlots(theme.slots).map((s) => ({ ...s }));
         selectedSlotIndex = 0;
         applyColor({ ...paletteSlots[0] });
+        persistSelectedThemeId();
         renderSavedThemes();
       });
 
       list.appendChild(item);
     });
+    updateSaveThemeButtonLabel();
   };
 
   document.getElementById('palette-save-theme-btn')?.addEventListener('click', async () => {
+    const slotsPayload = ensureTenSlots(paletteSlots).map((s) => ({ r: s.r, g: s.g, b: s.b, a: s.a }));
+    const bgPayload = { ...paletteSlots[1] };
+
+    if (selectedThemeId) {
+      const idx = themesData.findIndex((t) => t.id === selectedThemeId);
+      if (idx === -1) {
+        await modalAlert('Selected theme not found');
+        return;
+      }
+      const prev = themesData[idx];
+      const backup = {
+        ...prev,
+        slots: (prev.slots || []).map((s) => ({ ...s })),
+        ...(prev.bg ? { bg: { ...prev.bg } } : {}),
+      };
+      themesData[idx] = {
+        ...themesData[idx],
+        slots: slotsPayload,
+        bg: bgPayload,
+      };
+      try {
+        const saved = await API.put('/api/themes', { themes: themesData });
+        themesData = saved.themes || themesData;
+      } catch (e) {
+        themesData[idx] = backup;
+        await modalAlert(e?.message || 'Failed to save theme');
+        return;
+      }
+      renderSavedThemes();
+      return;
+    }
+
     const name = await modalPrompt('Theme name:');
     if (!name?.trim()) return;
     const trimmed = name.trim();
@@ -2189,8 +2267,8 @@ function initPalette() {
     const newTheme = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       name: trimmed,
-      slots: ensureTenSlots(paletteSlots).map((s) => ({ r: s.r, g: s.g, b: s.b, a: s.a })),
-      bg: { ...paletteSlots[1] },
+      slots: slotsPayload,
+      bg: bgPayload,
     };
     themesData.push(newTheme);
     try {
@@ -2201,8 +2279,17 @@ function initPalette() {
       await modalAlert(e?.message || 'Failed to save theme');
       return;
     }
+    selectedThemeId = newTheme.id;
+    persistSelectedThemeId();
     renderSavedThemes();
   });
+
+  document.getElementById('palette-clear-selection-btn')?.addEventListener('click', () => {
+    clearPaletteSelection();
+  });
+
+  applyColor({ ...paletteSlots[0] });
+  updateSaveThemeButtonLabel();
 
   (async () => {
     try {
@@ -2211,10 +2298,31 @@ function initPalette() {
     } catch {
       themesData = [];
     }
+    let storedId = null;
+    try {
+      storedId = localStorage.getItem(SELECTED_THEME_STORAGE_KEY);
+    } catch {
+      storedId = null;
+    }
+    if (storedId) {
+      const theme = themesData.find((t) => t.id === storedId);
+      if (theme?.slots?.length) {
+        selectedThemeId = theme.id;
+        paletteSlots = ensureTenSlots(theme.slots).map((s) => ({ ...s }));
+        selectedSlotIndex = 0;
+        applyColor({ ...paletteSlots[0] });
+        applyThemeToApp({ slots: ensureTenSlots(paletteSlots) });
+      } else {
+        try {
+          localStorage.removeItem(SELECTED_THEME_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
     renderSavedThemes();
+    updateSaveThemeButtonLabel();
   })();
-
-  applyColor({ ...paletteSlots[0] });
 }
 
 function clamp(n, min, max) {
