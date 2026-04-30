@@ -835,7 +835,7 @@ body {
 }
 
 .saved-links-category-list {
-  flex: 0 0 calc((100% - 2rem) / 7);
+  flex: 0 0 calc((100% - 2.5rem) / 6);
   min-width: 120px;
   max-height: 60vh;
   overflow-y: auto;
@@ -884,7 +884,7 @@ body {
 
 .saved-links-category-wrapper {
   position: relative;
-  flex: 0 0 calc((100% - 2rem) / 7);
+  flex: 0 0 calc((100% - 2.5rem) / 6);
   min-width: 120px;
 }
 

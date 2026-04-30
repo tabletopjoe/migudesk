@@ -565,7 +565,7 @@ let addLinkCategoryId = null;
 let editingLinkId = null;
 let editingCategoryId = null;
 let visibleCategoryIds = new Set();
-const MAX_VISIBLE_CATEGORIES = 7;
+const MAX_VISIBLE_CATEGORIES = 11;
 let multiOpenCategoryId = null;
 let multiOpenSelectedIds = new Set();
 
