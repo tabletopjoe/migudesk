@@ -240,13 +240,18 @@ body {
   background: var(--bg);
 }
 
+#app[data-route="home"] {
+  height: 100vh;
+  overflow: hidden;
+}
+
 #app[data-route="home"] .main-content {
   padding: 0.5rem 1rem 1rem 0.2rem;
   overflow: hidden;
 }
 
 #module-home {
-  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -718,7 +723,7 @@ body {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
-  align-items: flex-start;
+  align-items: stretch;
   overflow: hidden;
 }
 
@@ -803,9 +808,10 @@ body {
 }
 
 .saved-links-top-row {
+  height: 100%;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.5rem;
 }
 
@@ -835,7 +841,8 @@ body {
 }
 
 .saved-links-category-list {
-  flex: 0 0 calc((100% - 2.5rem) / 6);
+  flex: 0 0 auto;
+  width: calc((100% - 2.5rem) / 6);
   min-width: 120px;
   max-height: 60vh;
   overflow-y: auto;
@@ -875,17 +882,20 @@ body {
 .saved-links-categories {
   flex: 1;
   min-width: 0;
+  height: 100%;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-content: flex-start;
   gap: 0.5rem;
 }
 
 .saved-links-category-wrapper {
   position: relative;
-  flex: 0 0 calc((100% - 2.5rem) / 6);
+  flex: 0 0 auto;
+  width: calc((100% - 2.5rem) / 6);
   min-width: 120px;
+  max-height: 100%;
 }
 
 .link-form-flyout {
@@ -898,6 +908,9 @@ body {
 }
 
 .saved-links-category {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -911,6 +924,7 @@ body {
   padding: 0.35rem 0.5rem;
   cursor: pointer;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .category-edit-flyout {
@@ -937,13 +951,16 @@ body {
 
 .saved-links-category-links {
   display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
   padding: 0.25rem;
   background: rgba(236, 245, 238, 0.85);
   backdrop-filter: blur(12px);
 }
 
 .saved-links-category.expanded .saved-links-category-links {
-  display: block;
+  display: flex;
 }
 
 .saved-links-link,
@@ -1118,6 +1135,7 @@ body {
 }
 
 .home-meta {
+  align-self: flex-start;
   max-width: 16.666%;
   margin-left: auto;
   text-align: right;
