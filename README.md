@@ -1,8 +1,12 @@
-# gWrassler
+# megaDesk
+
+MMS home page: a multi-module dashboard with Gmail management, links, palette themes, and translation.
+
+## Modules
+
+### Gmail (gWrassler)
 
 Gmail inbox management: targeted search, mass delete, and account metadata.
-
-## Features
 
 - **Search** – Query builder with Gmail operators (clauses for from, to, subject, date, size, labels, etc.)
 - **Negate clauses** – Toggle NOT for any clause (e.g. `-from:spam@example.com`)
