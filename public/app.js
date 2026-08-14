@@ -568,6 +568,29 @@ let visibleCategoryIds = new Set();
 const MAX_VISIBLE_CATEGORIES = 11;
 let multiOpenCategoryId = null;
 let multiOpenSelectedIds = new Set();
+let topCardZ = 10;
+
+const CANVAS_CARD_WIDTH = 220;
+const CANVAS_CARD_HEIGHT = 260;
+const CANVAS_GRID_GAP = 16;
+
+/** Grid-cascades a default position onto any category missing x/y. Returns true if any were assigned. */
+function assignDefaultPositions(categories) {
+  const canvas = document.getElementById('saved-links-categories');
+  const width = canvas?.clientWidth || 1000;
+  const cols = Math.max(1, Math.floor((width + CANVAS_GRID_GAP) / (CANVAS_CARD_WIDTH + CANVAS_GRID_GAP)));
+  let changed = false;
+  categories.forEach((cat, i) => {
+    if (typeof cat.x !== 'number' || typeof cat.y !== 'number') {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      cat.x = col * (CANVAS_CARD_WIDTH + CANVAS_GRID_GAP);
+      cat.y = row * (CANVAS_CARD_HEIGHT + CANVAS_GRID_GAP);
+      changed = true;
+    }
+  });
+  return changed;
+}
 
 async function loadSavedLinks() {
   try {
@@ -577,7 +600,9 @@ async function loadSavedLinks() {
     linksData = { categories: [] };
   }
   initVisibleCategoryIds();
+  const changed = assignDefaultPositions(linksData.categories);
   renderSavedLinks();
+  if (changed) saveSavedLinks();
 }
 
 function initVisibleCategoryIds() {
@@ -626,19 +651,68 @@ async function saveSavedLinks() {
   }
 }
 
+const DRAG_THRESHOLD_PX = 4;
+
+/** Drags a category card freely within the canvas; a click (no movement past the threshold) toggles expand/collapse instead. */
+function startCategoryDrag(e, wrapper, catEl, cat) {
+  const canvas = document.getElementById('saved-links-categories');
+  if (!canvas) return;
+  const canvasRect = canvas.getBoundingClientRect();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const originLeft = wrapper.offsetLeft;
+  const originTop = wrapper.offsetTop;
+  let moved = false;
+  wrapper.setPointerCapture(e.pointerId);
+
+  function onMove(ev) {
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+    if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+    if (!moved) {
+      moved = true;
+      wrapper.classList.add('dragging');
+      topCardZ += 1;
+      wrapper.style.zIndex = topCardZ;
+    }
+    const maxLeft = Math.max(0, canvasRect.width - wrapper.offsetWidth);
+    const maxTop = Math.max(0, canvasRect.height - wrapper.offsetHeight);
+    wrapper.style.left = `${Math.min(Math.max(0, originLeft + dx), maxLeft)}px`;
+    wrapper.style.top = `${Math.min(Math.max(0, originTop + dy), maxTop)}px`;
+  }
+
+  function onUp(ev) {
+    wrapper.releasePointerCapture(ev.pointerId);
+    wrapper.removeEventListener('pointermove', onMove);
+    wrapper.removeEventListener('pointerup', onUp);
+    if (moved) {
+      wrapper.classList.remove('dragging');
+      cat.x = wrapper.offsetLeft;
+      cat.y = wrapper.offsetTop;
+      saveSavedLinks();
+    } else {
+      catEl.classList.toggle('expanded');
+      cat.expanded = catEl.classList.contains('expanded');
+      saveSavedLinks();
+    }
+  }
+
+  wrapper.addEventListener('pointermove', onMove);
+  wrapper.addEventListener('pointerup', onUp);
+}
+
 function renderSavedLinks() {
   const container = document.getElementById('saved-links-categories');
   if (!container) return;
-  const categoryList = document.getElementById('saved-links-category-list');
-  if (categoryList) categoryList.remove();
   container.innerHTML = '';
-  if (categoryList) container.prepend(categoryList);
   (linksData.categories || []).filter((cat) => visibleCategoryIds.has(cat.id)).forEach((cat) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'saved-links-category-wrapper';
     wrapper.dataset.categoryId = cat.id;
+    wrapper.style.left = `${cat.x || 0}px`;
+    wrapper.style.top = `${cat.y || 0}px`;
     const catEl = document.createElement('div');
-    catEl.className = 'saved-links-category expanded' + (multiOpenCategoryId === cat.id ? ' multi-open-mode' : '');
+    catEl.className = 'saved-links-category' + (cat.expanded !== false ? ' expanded' : '') + (multiOpenCategoryId === cat.id ? ' multi-open-mode' : '');
     catEl.dataset.categoryId = cat.id;
     const header = document.createElement('div');
     header.className = 'saved-links-category-header';
@@ -648,14 +722,13 @@ function renderSavedLinks() {
         <button type="button" class="saved-links-action-btn edit" data-action="edit-category" title="Edit">✎</button>
       </span>
     `;
-    header.addEventListener('click', (e) => {
-      if (!e.target.closest('.saved-links-action-btn')) {
-        e.stopPropagation();
-        catEl.classList.toggle('expanded');
-      } else {
-        const btn = e.target.closest('.saved-links-action-btn');
-        if (btn.dataset.action === 'edit-category') handleEditCategory(cat.id);
-      }
+    header.querySelector('.saved-links-action-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleEditCategory(cat.id);
+    });
+    header.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || e.target.closest('.saved-links-action-btn')) return;
+      startCategoryDrag(e, wrapper, catEl, cat);
     });
     const linksDiv = document.createElement('div');
     linksDiv.className = 'saved-links-category-links';
@@ -1031,6 +1104,7 @@ function initSavedLinks() {
       name: trimmed,
       links: [],
     });
+    assignDefaultPositions(linksData.categories);
     if (visibleCategoryIds.size < MAX_VISIBLE_CATEGORIES) {
       visibleCategoryIds.add(newId);
     }
