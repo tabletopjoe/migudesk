@@ -658,6 +658,11 @@ function startCategoryDrag(e, wrapper, catEl, cat) {
   const canvas = document.getElementById('saved-links-categories');
   if (!canvas) return;
   const canvasRect = canvas.getBoundingClientRect();
+  // Cards may rise into the toolbar row (negative top), but only right of the ⋯ button.
+  const toolbarRect = document.querySelector('.saved-links-toolbar')?.getBoundingClientRect();
+  const auxBtnRect = document.getElementById('saved-links-aux-btn')?.getBoundingClientRect();
+  const toolbarRowHeight = toolbarRect ? Math.max(0, canvasRect.top - toolbarRect.top) : 0;
+  const toolbarClearLeft = auxBtnRect ? auxBtnRect.right - canvasRect.left + 8 : 0;
   const startX = e.clientX;
   const startY = e.clientY;
   const originLeft = wrapper.offsetLeft;
@@ -677,8 +682,10 @@ function startCategoryDrag(e, wrapper, catEl, cat) {
     }
     const maxLeft = Math.max(0, canvasRect.width - wrapper.offsetWidth);
     const maxTop = Math.max(0, canvasRect.height - wrapper.offsetHeight);
-    wrapper.style.left = `${Math.min(Math.max(0, originLeft + dx), maxLeft)}px`;
-    wrapper.style.top = `${Math.min(Math.max(0, originTop + dy), maxTop)}px`;
+    const left = Math.min(Math.max(0, originLeft + dx), maxLeft);
+    const minTop = left >= toolbarClearLeft ? -toolbarRowHeight : 0;
+    wrapper.style.left = `${left}px`;
+    wrapper.style.top = `${Math.min(Math.max(minTop, originTop + dy), maxTop)}px`;
   }
 
   function onUp(ev) {

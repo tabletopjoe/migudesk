@@ -857,7 +857,7 @@ body {
   flex-direction: column;
   gap: 0.125rem;
   box-shadow: 0 4px 16px rgba(26, 36, 32, 0.15);
-  z-index: 30;
+  z-index: 2000;
 }
 
 .saved-links-category-list.hidden {
